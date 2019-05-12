@@ -265,6 +265,11 @@ def findPlugins(path):
         yield (pluginName, cp)
 
 
+def metadataParser():
+    """Used by other modules to access the local parser object"""
+    return plugins_metadata_parser
+
+
 def updateAvailablePlugins():
     """ Go through the plugin_paths list and find out what plugins are available. """
     # merge the lists
@@ -646,6 +651,12 @@ def spatialite_connect(*args, **kwargs):
     """returns a dbapi2.Connection to a SpatiaLite db
 using the "mod_spatialite" extension (python3)"""
     import sqlite3
+    import re
+
+    def fcnRegexp(pattern, string):
+        result = re.search(pattern, string)
+        return True if result else False
+
     con = sqlite3.dbapi2.connect(*args, **kwargs)
     con.enable_load_extension(True)
     cur = con.cursor()
@@ -670,6 +681,7 @@ using the "mod_spatialite" extension (python3)"""
         raise RuntimeError("Cannot find any suitable spatialite module")
     cur.close()
     con.enable_load_extension(False)
+    con.create_function("regexp", 2, fcnRegexp)
     return con
 
 

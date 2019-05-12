@@ -298,6 +298,11 @@ void QgsSimpleLineSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
   mCustomCheckBox->setCheckState( useCustomDashPattern ? Qt::Checked : Qt::Unchecked );
   mCustomCheckBox->blockSignals( false );
 
+  //make sure height of custom dash button looks good under different platforms
+  QSize size = mChangePatternButton->minimumSizeHint();
+  int fontHeight = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().height() * 1.4 );
+  mChangePatternButton->setMinimumSize( QSize( size.width(), std::max( size.height(), fontHeight ) ) );
+
   //draw inside polygon?
   const bool drawInsidePolygon = mLayer->drawInsidePolygon();
   whileBlocking( mDrawInsideCheckBox )->setCheckState( drawInsidePolygon ? Qt::Checked : Qt::Unchecked );
@@ -332,7 +337,6 @@ void QgsSimpleLineSymbolLayerWidget::penWidthChanged()
 void QgsSimpleLineSymbolLayerWidget::colorChanged( const QColor &color )
 {
   mLayer->setColor( color );
-  updatePatternIcon();
   emit changed();
 }
 
@@ -341,6 +345,7 @@ void QgsSimpleLineSymbolLayerWidget::penStyleChanged()
   mLayer->setPenStyle( cboPenStyle->penStyle() );
   mLayer->setPenJoinStyle( cboJoinStyle->penJoinStyle() );
   mLayer->setPenCapStyle( cboCapStyle->penCapStyle() );
+  updatePatternIcon();
   emit changed();
 }
 
@@ -396,6 +401,7 @@ void QgsSimpleLineSymbolLayerWidget::mPenWidthUnitWidget_changed()
   {
     mLayer->setWidthUnit( mPenWidthUnitWidget->unit() );
     mLayer->setWidthMapUnitScale( mPenWidthUnitWidget->getMapUnitScale() );
+    updatePatternIcon();
     emit changed();
   }
 }
@@ -416,6 +422,7 @@ void QgsSimpleLineSymbolLayerWidget::mDashPatternUnitWidget_changed()
   {
     mLayer->setCustomDashPatternUnit( mDashPatternUnitWidget->unit() );
     mLayer->setCustomDashPatternMapUnitScale( mDashPatternUnitWidget->getMapUnitScale() );
+    updatePatternIcon();
     emit changed();
   }
 }
@@ -434,15 +441,53 @@ void QgsSimpleLineSymbolLayerWidget::updatePatternIcon()
   {
     return;
   }
-  QgsSimpleLineSymbolLayer *layerCopy = mLayer->clone();
+  std::unique_ptr< QgsSimpleLineSymbolLayer > layerCopy( mLayer->clone() );
   if ( !layerCopy )
   {
     return;
   }
+  QColor color = qApp->palette().color( QPalette::WindowText );
+  layerCopy->setColor( color );
+  // reset offset, we don't want to show that in the preview
+  layerCopy->setOffset( 0 );
   layerCopy->setUseCustomDashPattern( true );
-  QIcon buttonIcon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( layerCopy, QgsUnitTypes::RenderMillimeters, mChangePatternButton->iconSize() );
-  mChangePatternButton->setIcon( buttonIcon );
-  delete layerCopy;
+
+  QSize currentIconSize;
+  //icon size is button size with a small margin
+#ifdef Q_OS_WIN
+  currentIconSize = QSize( mChangePatternButton->width() - 10, mChangePatternButton->height() - 6 );
+#else
+  currentIconSize = QSize( mChangePatternButton->width() - 10, mChangePatternButton->height() - 12 );
+#endif
+
+  if ( !currentIconSize.isValid() || currentIconSize.width() <= 0 || currentIconSize.height() <= 0 )
+  {
+    return;
+  }
+
+  //create an icon pixmap
+  std::unique_ptr< QgsLineSymbol > previewSymbol = qgis::make_unique< QgsLineSymbol >( QgsSymbolLayerList() << layerCopy.release() );
+  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( previewSymbol.get(), currentIconSize );
+  mChangePatternButton->setIconSize( currentIconSize );
+  mChangePatternButton->setIcon( icon );
+
+  // set tooltip
+  // create very large preview image
+  int width = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().width( 'X' ) * 23 );
+  int height = static_cast< int >( width / 1.61803398875 ); // golden ratio
+
+  QPixmap pm = QgsSymbolLayerUtils::symbolPreviewPixmap( previewSymbol.get(), QSize( width, height ), height / 20 );
+  QByteArray data;
+  QBuffer buffer( &data );
+  pm.save( &buffer, "PNG", 100 );
+  mChangePatternButton->setToolTip( QStringLiteral( "<img src='data:image/png;base64, %3'>" ).arg( QString( data.toBase64() ) ) );
+}
+
+void QgsSimpleLineSymbolLayerWidget::resizeEvent( QResizeEvent *event )
+{
+  QgsSymbolLayerWidget::resizeEvent( event );
+  // redraw custom dash pattern icon -- the button size has changed
+  updatePatternIcon();
 }
 
 
@@ -923,23 +968,27 @@ QgsFilledMarkerSymbolLayerWidget::QgsFilledMarkerSymbolLayerWidget( QgsVectorLay
   if ( vectorLayer() )
     mSizeDDBtn->setSymbol( mAssistantPreviewSymbol );
 
-  QSize size = lstNames->iconSize();
-  double markerSize = DEFAULT_POINT_SIZE * 2;
-  const auto shapes { QgsSimpleMarkerSymbolLayerBase::availableShapes() };
+  int size = lstNames->iconSize().width();
+  size = std::max( 30, static_cast< int >( std::round( Qgis::UI_SCALE_FACTOR * fontMetrics().width( QStringLiteral( "XXX" ) ) ) ) );
+  lstNames->setGridSize( QSize( size * 1.2, size * 1.2 ) );
+  lstNames->setIconSize( QSize( size, size ) );
+
+  double markerSize = size * 0.8;
+  const auto shapes = QgsSimpleMarkerSymbolLayerBase::availableShapes();
   for ( QgsSimpleMarkerSymbolLayerBase::Shape shape : shapes )
   {
-    if ( !QgsSimpleMarkerSymbolLayerBase::shapeIsFilled( shape ) )
-      continue;
-
     QgsSimpleMarkerSymbolLayer *lyr = new QgsSimpleMarkerSymbolLayer( shape, markerSize );
+    lyr->setSizeUnit( QgsUnitTypes::RenderPixels );
     lyr->setColor( QColor( 200, 200, 200 ) );
     lyr->setStrokeColor( QColor( 0, 0, 0 ) );
-    QIcon icon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( lyr, QgsUnitTypes::RenderMillimeters, size );
+    QIcon icon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( lyr, QgsUnitTypes::RenderPixels, QSize( size, size ) );
     QListWidgetItem *item = new QListWidgetItem( icon, QString(), lstNames );
     item->setData( Qt::UserRole, static_cast< int >( shape ) );
     item->setToolTip( QgsSimpleMarkerSymbolLayerBase::encodeShape( shape ) );
     delete lyr;
   }
+  // show at least 3 rows
+  lstNames->setMinimumHeight( lstNames->gridSize().height() * 3.1 );
 
   connect( lstNames, &QListWidget::currentRowChanged, this, &QgsFilledMarkerSymbolLayerWidget::setShape );
   connect( spinSize, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsFilledMarkerSymbolLayerWidget::setSize );
@@ -3205,8 +3254,10 @@ QgsFontMarkerSymbolLayerWidget::QgsFontMarkerSymbolLayerWidget( QgsVectorLayer *
                                     << QgsUnitTypes::RenderPoints << QgsUnitTypes::RenderInches );
   mOffsetUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderMetersInMapUnits << QgsUnitTypes::RenderMapUnits << QgsUnitTypes::RenderPixels
                                << QgsUnitTypes::RenderPoints << QgsUnitTypes::RenderInches );
-  widgetChar = new CharacterWidget;
+
+  widgetChar = new CharacterWidget();
   scrollArea->setWidget( widgetChar );
+  scrollArea->setVerticalOnly( true );
 
   btnColor->setAllowOpacity( true );
   btnColor->setColorDialogTitle( tr( "Select Symbol Fill Color" ) );
@@ -3238,6 +3289,8 @@ QgsFontMarkerSymbolLayerWidget::QgsFontMarkerSymbolLayerWidget( QgsVectorLayer *
   connect( spinOffsetX, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsFontMarkerSymbolLayerWidget::setOffset );
   connect( spinOffsetY, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsFontMarkerSymbolLayerWidget::setOffset );
   connect( widgetChar, &CharacterWidget::characterSelected, this, &QgsFontMarkerSymbolLayerWidget::setCharacter );
+  connect( mCharLineEdit, &QLineEdit::textChanged, this, &QgsFontMarkerSymbolLayerWidget::setCharacterFromText );
+
   connect( this, &QgsSymbolLayerWidget::changed, this, &QgsFontMarkerSymbolLayerWidget::updateAssistantSymbol );
 }
 
@@ -3260,8 +3313,12 @@ void QgsFontMarkerSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
 
   widgetChar->blockSignals( true );
   widgetChar->setFont( layerFont );
-  widgetChar->setCharacter( mLayer->character() );
+  if ( mLayer->character().length() == 1 )
+  {
+    widgetChar->setCharacter( mLayer->character().at( 0 ) );
+  }
   widgetChar->blockSignals( false );
+  whileBlocking( mCharLineEdit )->setText( mLayer->character() );
 
   //block
   whileBlocking( spinOffsetX )->setValue( mLayer->offset().x() );
@@ -3339,9 +3396,40 @@ void QgsFontMarkerSymbolLayerWidget::setAngle( double angle )
   emit changed();
 }
 
+void QgsFontMarkerSymbolLayerWidget::setCharacterFromText( const QString &text )
+{
+  if ( text.isEmpty() )
+    return;
+
+  // take the last character of a string for a better experience when users cycle through several characters on their keyboard
+  QString character = text;
+  if ( text.contains( QRegularExpression( QStringLiteral( "^0x[0-9a-fA-F]{1,4}$" ) ) ) )
+  {
+    bool ok = false;
+    unsigned int value = text.toUInt( &ok, 0 );
+    if ( ok )
+      character = QChar( value );
+  }
+
+  if ( character != mLayer->character() )
+  {
+    mLayer->setCharacter( character );
+    if ( mLayer->character().length() == 1 )
+    {
+      whileBlocking( widgetChar )->setCharacter( mLayer->character().at( 0 ) );
+    }
+    else
+    {
+      widgetChar->clearCharacter();
+    }
+    emit changed();
+  }
+}
+
 void QgsFontMarkerSymbolLayerWidget::setCharacter( QChar chr )
 {
   mLayer->setCharacter( chr );
+  whileBlocking( mCharLineEdit )->setText( chr );
   emit changed();
 }
 

@@ -277,6 +277,7 @@ SET(QGIS_GUI_SRCS
   qgsfilecontentsourcelineedit.cpp
   qgsfilewidget.cpp
   qgsfilterlineedit.cpp
+  qgsfindfilesbypatternwidget.cpp
   qgsfloatingwidget.cpp
   qgsfocuswatcher.cpp
   qgsfontbutton.cpp
@@ -452,6 +453,7 @@ SET(QGIS_GUI_MOC_HDRS
   qgsfeatureselectiondlg.h
   qgsfieldcombobox.h
   qgsfieldexpressionwidget.h
+  qgsfindfilesbypatternwidget.h
   qgsfeaturelistcombobox.h
   qgsfieldvalidator.h
   qgsfieldvalueslineedit.h
@@ -964,6 +966,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/src/core/expression
   ${CMAKE_SOURCE_DIR}/src/core/validity
   ${CMAKE_SOURCE_DIR}/src/native
+  ${CMAKE_SOURCE_DIR}/external
 
   ${CMAKE_BINARY_DIR}/src/core
   ${CMAKE_BINARY_DIR}/src/gui
