@@ -28,8 +28,7 @@
 #include <QRegularExpression>
 #include <QJsonObject>
 #include <QJsonArray>
-
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 /***************************************************************************
  * This class is considered CRITICAL and any change MUST be accompanied with
@@ -369,8 +368,8 @@ bool QgsPoint::isValid( QString &, int ) const
 
 bool QgsPoint::insertVertex( QgsVertexId position, const QgsPoint &vertex )
 {
-  Q_UNUSED( position );
-  Q_UNUSED( vertex );
+  Q_UNUSED( position )
+  Q_UNUSED( vertex )
   return false;
 }
 
@@ -382,7 +381,7 @@ bool QgsPoint::insertVertex( QgsVertexId position, const QgsPoint &vertex )
 
 bool QgsPoint::moveVertex( QgsVertexId position, const QgsPoint &newPos )
 {
-  Q_UNUSED( position );
+  Q_UNUSED( position )
   clearCache();
   mX = newPos.mX;
   mY = newPos.mY;
@@ -399,18 +398,18 @@ bool QgsPoint::moveVertex( QgsVertexId position, const QgsPoint &newPos )
 
 bool QgsPoint::deleteVertex( QgsVertexId position )
 {
-  Q_UNUSED( position );
+  Q_UNUSED( position )
   return false;
 }
 
 double QgsPoint::closestSegment( const QgsPoint &pt, QgsPoint &segmentPt,  QgsVertexId &vertexAfter, int *leftOf, double epsilon ) const
 {
-  Q_UNUSED( pt );
-  Q_UNUSED( segmentPt );
-  Q_UNUSED( vertexAfter );
+  Q_UNUSED( pt )
+  Q_UNUSED( segmentPt )
+  Q_UNUSED( vertexAfter )
   if ( leftOf )
     *leftOf = 0;
-  Q_UNUSED( epsilon );
+  Q_UNUSED( epsilon )
   return -1;  // no segments - return error
 }
 
@@ -444,7 +443,7 @@ void QgsPoint::adjacentVertices( QgsVertexId, QgsVertexId &previousVertex, QgsVe
 
 double QgsPoint::vertexAngle( QgsVertexId vertex ) const
 {
-  Q_UNUSED( vertex );
+  Q_UNUSED( vertex )
   return 0.0;
 }
 

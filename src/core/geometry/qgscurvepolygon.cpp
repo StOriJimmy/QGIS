@@ -24,13 +24,13 @@
 #include "qgspolygon.h"
 #include "qgswkbptr.h"
 #include "qgsmulticurve.h"
+
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QPainter>
 #include <QPainterPath>
 #include <memory>
-
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 QgsCurvePolygon::QgsCurvePolygon()
 {
@@ -403,7 +403,7 @@ QDomElement QgsCurvePolygon::asGml3( QDomDocument &doc, int precision, const QSt
 
 json QgsCurvePolygon::asJsonObject( int precision ) const
 {
-  json coordinates { json::array( )};
+  json coordinates( json::array( ) );
   if ( exteriorRing() )
   {
     std::unique_ptr< QgsLineString > exteriorLineString( exteriorRing()->curveToLine() );

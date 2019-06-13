@@ -23,8 +23,8 @@
 #include "qgsmaptopixel.h"
 #include "qgswkbptr.h"
 #include "qgslinesegment.h"
-#include "nlohmann/json.hpp"
 
+#include <nlohmann/json.hpp>
 #include <cmath>
 #include <memory>
 #include <QPainter>
@@ -469,8 +469,8 @@ QgsPoint QgsLineString::endPoint() const
 
 QgsLineString *QgsLineString::curveToLine( double tolerance, SegmentationToleranceType toleranceType ) const
 {
-  Q_UNUSED( tolerance );
-  Q_UNUSED( toleranceType );
+  Q_UNUSED( tolerance )
+  Q_UNUSED( toleranceType )
   return clone();
 }
 
