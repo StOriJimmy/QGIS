@@ -110,7 +110,7 @@ QString QgsPostgresResult::PQfname( int col )
   return QString::fromUtf8( ::PQfname( mRes, col ) );
 }
 
-unsigned int QgsPostgresResult::PQftable( int col )
+Oid QgsPostgresResult::PQftable( int col )
 {
   Q_ASSERT( mRes );
   return ::PQftable( mRes, col );
@@ -160,7 +160,7 @@ QgsPostgresConn *QgsPostgresConn::connectDb( const QString &conninfo, bool reado
   if ( shared )
   {
     // sharing connection between threads is not safe
-    // See https://issues.qgis.org/issues/13141
+    // See https://github.com/qgis/QGIS/issues/21205
     Q_ASSERT( QApplication::instance()->thread() == QThread::currentThread() );
 
     if ( connections.contains( conninfo ) )
@@ -1354,7 +1354,7 @@ qint64 QgsPostgresConn::getBinaryInt( QgsPostgresResult &queryResult, int row, i
       if ( mSwapEndian )
         oid = ntohs( oid );
       /* cast to signed 16bit
-       * See https://issues.qgis.org/issues/14262 */
+       * See https://github.com/qgis/QGIS/issues/22258 */
       oid = ( qint16 )oid;
       break;
 
@@ -1404,7 +1404,7 @@ qint64 QgsPostgresConn::getBinaryInt( QgsPostgresResult &queryResult, int row, i
       if ( mSwapEndian )
         oid = ntohl( oid );
       /* cast to signed 32bit
-       * See https://issues.qgis.org/issues/14262 */
+       * See https://github.com/qgis/QGIS/issues/22258 */
       oid = ( qint32 )oid;
       break;
   }

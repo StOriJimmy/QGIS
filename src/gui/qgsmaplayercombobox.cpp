@@ -74,9 +74,13 @@ QStringList QgsMapLayerComboBox::additionalItems() const
 
 void QgsMapLayerComboBox::setLayer( QgsMapLayer *layer )
 {
+  if ( layer == currentLayer() )
+    return;
+
   if ( !layer )
   {
     setCurrentIndex( -1 );
+    emit layerChanged( nullptr );
     return;
   }
 
@@ -160,7 +164,10 @@ QgsMapLayer *QgsMapLayerComboBox::compatibleMapLayerFromMimeData( const QMimeDat
 void QgsMapLayerComboBox::dragEnterEvent( QDragEnterEvent *event )
 {
   if ( !( event->possibleActions() & Qt::CopyAction ) )
+  {
+    event->ignore();
     return;
+  }
 
   if ( compatibleMapLayerFromMimeData( event->mimeData() ) )
   {
@@ -170,23 +177,33 @@ void QgsMapLayerComboBox::dragEnterEvent( QDragEnterEvent *event )
     mDragActive = true;
     update();
   }
+  else
+  {
+    event->ignore();
+  }
 }
 
 void QgsMapLayerComboBox::dragLeaveEvent( QDragLeaveEvent *event )
 {
-  QComboBox::dragLeaveEvent( event );
   if ( mDragActive )
   {
     event->accept();
     mDragActive = false;
     update();
   }
+  else
+  {
+    event->ignore();
+  }
 }
 
 void QgsMapLayerComboBox::dropEvent( QDropEvent *event )
 {
   if ( !( event->possibleActions() & Qt::CopyAction ) )
+  {
+    event->ignore();
     return;
+  }
 
   if ( QgsMapLayer *layer = compatibleMapLayerFromMimeData( event->mimeData() ) )
   {
@@ -197,6 +214,10 @@ void QgsMapLayerComboBox::dropEvent( QDropEvent *event )
 
     setLayer( layer );
   }
+  else
+  {
+    event->ignore();
+  }
   mDragActive = false;
   update();
 }
@@ -204,7 +225,7 @@ void QgsMapLayerComboBox::dropEvent( QDropEvent *event )
 void QgsMapLayerComboBox::paintEvent( QPaintEvent *e )
 {
   QComboBox::paintEvent( e );
-  if ( mDragActive )
+  if ( mDragActive || mHighlight )
   {
     QPainter p( this );
     int width = 2;  // width of highlight rectangle inside frame
