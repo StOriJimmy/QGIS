@@ -70,6 +70,7 @@ class QgsLayerTree;
 class QgsLabelingEngineSettings;
 class QgsAuxiliaryStorage;
 class QgsMapLayer;
+class QgsBookmarkManager;
 
 /**
  * \ingroup core
@@ -139,7 +140,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     bool isDirty() const;
 
     /**
-     * Sets the file name associated with the project. This is the file which contains the project's XML
+     * Sets the file name associated with the project. This is the file or the storage URI which contains the project's XML
      * representation.
      * \param name project file name
      * \see fileName()
@@ -147,7 +148,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     void setFileName( const QString &name );
 
     /**
-     * Returns the project's file name. This is the file which contains the project's XML
+     * Returns the project's file name. This is the file or the storage URI which contains the project's XML
      * representation.
      * \see setFileName()
      * \see fileInfo()
@@ -211,11 +212,14 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
 
     /**
      * Sets the project's native coordinate reference system.
+     * If \a adjustEllipsoid is set to TRUE, the ellpsoid of this project will be set to
+     * the ellipsoid imposed by the CRS.
+     *
      * \see crs()
      * \see setEllipsoid()
      * \since QGIS 3.0
      */
-    void setCrs( const QgsCoordinateReferenceSystem &crs );
+    void setCrs( const QgsCoordinateReferenceSystem &crs, bool adjustEllipsoid = false );
 
     /**
      * Returns a proj string representing the project's ellipsoid setting, e.g., "WGS84".
@@ -264,17 +268,32 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     void clear();
 
     /**
+     * Flags which control project read behavior.
+     * \since QGIS 3.10
+     */
+    enum ReadFlag
+    {
+      FlagDontResolveLayers = 1 << 0, //!< Don't resolve layer paths (i.e. don't load any layer content). Dramatically improves project read time if the actual data from the layers is not required.
+    };
+    Q_DECLARE_FLAGS( ReadFlags, ReadFlag )
+
+    /**
      * Reads given project file from the given file.
      * \param filename name of project file to read
+     * \param flags optional flags which control the read behavior of projects
      * \returns TRUE if project file has been read successfully
      */
-    bool read( const QString &filename );
+    bool read( const QString &filename, QgsProject::ReadFlags flags = nullptr );
 
     /**
      * Reads the project from its currently associated file (see fileName() ).
+     *
+     * The \a flags argument can be used to specify optional flags which control
+     * the read behavior of projects.
+     *
      * \returns TRUE if project file has been read successfully
      */
-    bool read();
+    bool read( QgsProject::ReadFlags flags = nullptr );
 
     /**
      * Reads the layer described in the associated DOM node.
@@ -426,18 +445,24 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     QString layerIsEmbedded( const QString &id ) const;
 
     /**
-     * Creates a maplayer instance defined in an arbitrary project file. Caller takes ownership
+     * Creates a maplayer instance defined in an arbitrary project file. Caller takes ownership.
+     *
+     * The optional \a flags argument can be used to specify flags which control layer reading.
+     *
      * \returns the layer or 0 in case of error
      * \note not available in Python bindings
      */
     bool createEmbeddedLayer( const QString &layerId, const QString &projectFilePath, QList<QDomNode> &brokenNodes,
-                              bool saveFlag = true ) SIP_SKIP;
+                              bool saveFlag = true, QgsProject::ReadFlags flags = nullptr ) SIP_SKIP;
 
     /**
      * Create layer group instance defined in an arbitrary project file.
+     *
+     * The optional \a flags argument can be used to control layer reading behavior.
+     *
      * \since QGIS 2.4
      */
-    QgsLayerTreeGroup *createEmbeddedGroup( const QString &groupName, const QString &projectFilePath, const QStringList &invisibleLayers );
+    QgsLayerTreeGroup *createEmbeddedGroup( const QString &groupName, const QString &projectFilePath, const QStringList &invisibleLayers, QgsProject::ReadFlags flags = nullptr );
 
     //! Convenience function to set topological editing
     void setTopologicalEditing( bool enabled );
@@ -520,6 +545,21 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \since QGIS 3.0
      */
     QgsLayoutManager *layoutManager();
+
+    /**
+     * Returns the project's bookmark manager, which manages bookmarks within
+     * the project.
+     * \note not available in Python bindings
+     * \since QGIS 3.10
+     */
+    const QgsBookmarkManager *bookmarkManager() const SIP_SKIP;
+
+    /**
+     * Returns the project's bookmark manager, which manages bookmarks within
+     * the project.
+     * \since QGIS 3.10
+     */
+    QgsBookmarkManager *bookmarkManager();
 
     /**
      * Returns pointer to the root (invisible) node of the project's layer tree
@@ -700,7 +740,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \see mapLayersByName()
      * \see mapLayers()
      */
-    QgsMapLayer *mapLayer( const QString &layerId ) const;
+    Q_INVOKABLE QgsMapLayer *mapLayer( const QString &layerId ) const;
 
 #ifndef SIP_RUN
 
@@ -736,6 +776,18 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     QList<QgsMapLayer *> mapLayersByName( const QString &layerName ) const;
 
     /**
+     * Retrieves a list of matching registered layers by layer \a shortName.
+     * If layer's short name is empty a match with layer's name is attempted.
+     *
+     * \returns list of matching layers
+     * \see mapLayer()
+     * \see mapLayers()
+     * \since QGIS 3.10
+     */
+    QList<QgsMapLayer *> mapLayersByShortName( const QString &shortName ) const;
+
+
+    /**
      * Returns a map of all registered layers by layer ID.
      *
      * \param validOnly if set only valid layers will be returned
@@ -768,6 +820,38 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     {
       return mLayerStore->layers<T>();
     }
+
+    /**
+     * Retrieves a list of matching registered layers by layer \a shortName with a specified layer type,
+     * if layer's short name is empty a match with layer's name is attempted.
+     *
+     * \param shortName short name of layers to match
+     * \returns list of matching layers
+     * \see mapLayer()
+     * \see mapLayers()
+     * \note not available in Python bindings
+     * \since QGIS 3.10
+     */
+    template <typename T>
+    QVector<T> mapLayersByShortName( const QString &shortName ) const
+    {
+      QVector<T> layers;
+      const auto constMapLayers { mLayerStore->layers<T>() };
+      for ( const auto l : constMapLayers )
+      {
+        if ( ! l->shortName().isEmpty() )
+        {
+          if ( l->shortName() == shortName )
+            layers << l;
+        }
+        else if ( l->name() == shortName )
+        {
+          layers << l;
+        }
+      }
+      return layers;
+    }
+
 #endif
 
     /**
@@ -1048,6 +1132,26 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \since QGIS 3.4
      */
     QString translate( const QString &context, const QString &sourceText, const char *disambiguation = nullptr, int n = -1 ) const override;
+
+    /**
+     * Accepts the specified style entity \a visitor, causing it to visit all style entities associated
+     * with the project.
+     *
+     * Returns TRUE if the visitor should continue visiting other objects, or FALSE if visiting
+     * should be canceled.
+     *
+     * \since QGIS 3.10
+     */
+    bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
+
+#ifdef SIP_RUN
+    SIP_PYOBJECT __repr__();
+    % MethodCode
+    QString str = QStringLiteral( "<QgsProject: '%1'%2>" ).arg( sipCpp->fileName(),
+                  sipCpp == QgsProject::instance() ? QStringLiteral( " (singleton instance)" ) : QString() );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+    % End
+#endif
 
   signals:
 
@@ -1438,9 +1542,10 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \param doc DOM document to parse
      * \param brokenNodes a list of DOM nodes corresponding to layers that we were unable to load; this could be
      * because the layers were removed or re-located after the project was last saved
+     * \param flags optional project reading flags
      * \returns TRUE if function worked; else is FALSE
     */
-    bool _getMapLayers( const QDomDocument &doc, QList<QDomNode> &brokenNodes );
+    bool _getMapLayers( const QDomDocument &doc, QList<QDomNode> &brokenNodes, QgsProject::ReadFlags flags = nullptr );
 
     /**
      * Set error message from read/write operation
@@ -1455,25 +1560,35 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     void clearError() SIP_SKIP;
 
     /**
-     * Creates layer and adds it to maplayer registry
+     * Creates layer and adds it to maplayer registry.
+     *
+     * The optional \a flags argument can be used to control layer reading behavior.
+     *
      * \note not available in Python bindings
      */
-    bool addLayer( const QDomElement &layerElem, QList<QDomNode> &brokenNodes, QgsReadWriteContext &context ) SIP_SKIP;
+    bool addLayer( const QDomElement &layerElem, QList<QDomNode> &brokenNodes, QgsReadWriteContext &context, QgsProject::ReadFlags flags = nullptr ) SIP_SKIP;
 
-    //! \note not available in Python bindings
-    void initializeEmbeddedSubtree( const QString &projectFilePath, QgsLayerTreeGroup *group ) SIP_SKIP;
+    /**
+     * The optional \a flags argument can be used to control layer reading behavior.
+     *
+     * \note not available in Python bindings
+    */
+    void initializeEmbeddedSubtree( const QString &projectFilePath, QgsLayerTreeGroup *group, QgsProject::ReadFlags flags = nullptr ) SIP_SKIP;
 
-    //! \note not available in Python bindings
-    void loadEmbeddedNodes( QgsLayerTreeGroup *group ) SIP_SKIP;
+    /**
+     * The optional \a flags argument can be used to control layer reading behavior.
+     * \note not available in Python bindings
+     */
+    void loadEmbeddedNodes( QgsLayerTreeGroup *group, QgsProject::ReadFlags flags = nullptr ) SIP_SKIP;
 
     //! Read .qgs file
-    bool readProjectFile( const QString &filename );
+    bool readProjectFile( const QString &filename, QgsProject::ReadFlags flags = nullptr );
 
     //! Write .qgs file
     bool writeProjectFile( const QString &filename );
 
     //! Unzip .qgz file then read embedded .qgs file
-    bool unzip( const QString &filename );
+    bool unzip( const QString &filename, QgsProject::ReadFlags flags = nullptr );
 
     //! Zip project
     bool zip( const QString &filename );
@@ -1500,6 +1615,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
 
     std::unique_ptr<QgsAnnotationManager> mAnnotationManager;
     std::unique_ptr<QgsLayoutManager> mLayoutManager;
+
+    QgsBookmarkManager *mBookmarkManager = nullptr;
 
     QgsLayerTree *mRootGroup = nullptr;
 
@@ -1549,6 +1666,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     // Required by QGIS Server for switching the current project instance
     friend class QgsConfigCache;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsProject::ReadFlags )
 
 /**
  * Temporarily blocks QgsProject "dirtying" for the lifetime of the object.

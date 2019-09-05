@@ -38,6 +38,7 @@
 #include "qgsimagecache.h"
 #include "qgsproject.h"
 #include "qgsguiutils.h"
+#include "qgsgui.h"
 
 #include <QColorDialog>
 #include <QPainter>
@@ -384,6 +385,13 @@ QgsSymbolWidgetContext QgsSymbolSelectorWidget::context() const
 
 void QgsSymbolSelectorWidget::loadSymbol( QgsSymbol *symbol, SymbolLayerItem *parent )
 {
+  if ( !parent )
+  {
+    mSymbol = symbol;
+    model->clear();
+    parent = static_cast<SymbolLayerItem *>( model->invisibleRootItem() );
+  }
+
   SymbolLayerItem *symbolItem = new SymbolLayerItem( symbol );
   QFont boldFont = symbolItem->font();
   boldFont.setBold( true );
@@ -406,7 +414,7 @@ void QgsSymbolSelectorWidget::loadSymbol( QgsSymbol *symbol, SymbolLayerItem *pa
 }
 
 
-void QgsSymbolSelectorWidget::loadSymbol()
+void QgsSymbolSelectorWidget::reloadSymbol()
 {
   model->clear();
   loadSymbol( mSymbol, static_cast<SymbolLayerItem *>( model->invisibleRootItem() ) );
@@ -545,7 +553,7 @@ void QgsSymbolSelectorWidget::symbolChanged()
   else
   {
     //it is the symbol itself
-    loadSymbol();
+    reloadSymbol();
     QModelIndex newIndex = layersTree->model()->index( 0, 0 );
     layersTree->setCurrentIndex( newIndex );
   }
@@ -768,8 +776,7 @@ QgsSymbolSelectorDialog::QgsSymbolSelectorDialog( QgsSymbol *symbol, QgsStyle *s
   layout()->addWidget( mSelectorWidget );
   layout()->addWidget( mButtonBox );
 
-  QgsSettings settings;
-  restoreGeometry( settings.value( QStringLiteral( "Windows/SymbolSelectorWidget/geometry" ) ).toByteArray() );
+  QgsGui::instance()->enableAutoGeometryRestore( this );
 
   // can be embedded in renderer properties dialog
   if ( embedded )
@@ -782,12 +789,6 @@ QgsSymbolSelectorDialog::QgsSymbolSelectorDialog( QgsSymbol *symbol, QgsStyle *s
     setWindowTitle( tr( "Symbol Selector" ) );
   }
   mSelectorWidget->setDockMode( embedded );
-}
-
-QgsSymbolSelectorDialog::~QgsSymbolSelectorDialog()
-{
-  QgsSettings settings;
-  settings.setValue( QStringLiteral( "Windows/SymbolSelectorWidget/geometry" ), saveGeometry() );
 }
 
 QMenu *QgsSymbolSelectorDialog::advancedMenu()
@@ -823,9 +824,9 @@ void QgsSymbolSelectorDialog::keyPressEvent( QKeyEvent *e )
   }
 }
 
-void QgsSymbolSelectorDialog::loadSymbol()
+void QgsSymbolSelectorDialog::reloadSymbol()
 {
-  mSelectorWidget->loadSymbol();
+  mSelectorWidget->reloadSymbol();
 }
 
 void QgsSymbolSelectorDialog::loadSymbol( QgsSymbol *symbol, SymbolLayerItem *parent )
@@ -916,6 +917,11 @@ void QgsSymbolSelectorDialog::symbolChanged()
 void QgsSymbolSelectorDialog::changeLayer( QgsSymbolLayer *layer )
 {
   mSelectorWidget->changeLayer( layer );
+}
+
+QDialogButtonBox *QgsSymbolSelectorDialog::buttonBox() const
+{
+  return mButtonBox;
 }
 
 void QgsSymbolSelectorDialog::showHelp()

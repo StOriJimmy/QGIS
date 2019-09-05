@@ -13,6 +13,7 @@ SET(PG_SRCS
   qgscolumntypethread.cpp
   qgspostgresexpressioncompiler.cpp
   qgspostgreslistener.cpp
+  qgspostgresproviderconnection.cpp
 )
 
 SET(PG_MOC_HDRS
@@ -28,11 +29,14 @@ SET(PG_MOC_HDRS
 
 IF (WITH_GUI)
   SET(PG_SRCS ${PG_SRCS}
+    qgspostgresprovidergui.cpp
+    qgspostgresdataitemguiprovider.cpp
     qgspgsourceselect.cpp
     qgspgnewconnection.cpp
     qgspostgresprojectstoragedialog.cpp
   )
   SET(PG_MOC_HDRS ${PG_MOC_HDRS}
+    qgspostgresdataitemguiprovider.h
     qgspgnewconnection.h
     qgspgsourceselect.h
     qgspostgresprojectstoragedialog.h
@@ -41,6 +45,7 @@ ENDIF ()
 
 SET(PG_HDRS
   qgspostgresexpressioncompiler.h
+  qgspostgresproviderconnection.h
 )
 
 ########################################################

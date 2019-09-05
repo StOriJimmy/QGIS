@@ -119,12 +119,12 @@ json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, cons
 
     if ( QgsWkbTypes::flatType( geom.wkbType() ) != QgsWkbTypes::Point )
     {
-      featureJson[ "bbox" ] = { {
-          box.xMinimum(),
-          box.yMinimum(),
-          box.xMaximum(),
-          box.yMaximum()
-        }
+      featureJson[ "bbox" ] =
+      {
+        qgsRound( box.xMinimum(), mPrecision ),
+        qgsRound( box.yMinimum(), mPrecision ),
+        qgsRound( box.xMaximum(), mPrecision ),
+        qgsRound( box.yMaximum(), mPrecision )
       };
     }
     featureJson[ "geometry" ] = geom.asJsonObject( mPrecision );
@@ -225,17 +225,21 @@ json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, cons
 
 QString QgsJsonExporter::exportFeatures( const QgsFeatureList &features, int indent ) const
 {
+  return QString::fromStdString( exportFeaturesToJsonObject( features ).dump( indent ) );
+}
+
+json QgsJsonExporter::exportFeaturesToJsonObject( const QgsFeatureList &features ) const
+{
   json data
   {
     { "type", "FeatureCollection" },
     { "features", json::array() }
   };
-  const auto constFeatures = features;
-  for ( const QgsFeature &feature : constFeatures )
+  for ( const QgsFeature &feature : qgis::as_const( features ) )
   {
     data["features"].push_back( exportFeatureToJsonObject( feature ) );
   }
-  return QString::fromStdString( data.dump( indent ) );
+  return data;
 }
 
 //
@@ -391,8 +395,8 @@ json QgsJsonUtils::jsonFromVariant( const QVariant &val )
   json j;
   if ( val.type() == QVariant::Type::Map )
   {
-    const auto vMap { val.toMap() };
-    auto jMap { json::object() };
+    const auto vMap = val.toMap();
+    auto jMap = json::object();
     for ( auto it = vMap.constBegin(); it != vMap.constEnd(); it++ )
     {
       jMap[ it.key().toStdString() ] = jsonFromVariant( it.value() );
@@ -401,8 +405,8 @@ json QgsJsonUtils::jsonFromVariant( const QVariant &val )
   }
   else if ( val.type() == QVariant::Type::List )
   {
-    const auto vList{ val.toList() };
-    auto jList { json::array() };
+    const auto vList = val.toList();
+    auto jList = json::array();
     for ( const auto &v : vList )
     {
       jList.push_back( jsonFromVariant( v ) );

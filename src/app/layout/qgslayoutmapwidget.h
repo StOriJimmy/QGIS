@@ -27,6 +27,7 @@ class QgsMapLayer;
 class QgsLayoutItemMap;
 class QgsLayoutItemMapOverview;
 class QgsLayoutMapLabelingWidget;
+class QgsBookmarkManagerProxyModel;
 
 /**
  * \ingroup app
@@ -78,7 +79,6 @@ class QgsLayoutMapWidget: public QgsLayoutItemBaseWidget, private Ui::QgsLayoutM
     void mGridDownButton_clicked();
 
     QgsLayoutItemMapGrid *currentGrid();
-    void mDrawGridCheckBox_toggled( bool state );
     void mGridListWidget_currentItemChanged( QListWidgetItem *current, QListWidgetItem *previous );
     void mGridListWidget_itemChanged( QListWidgetItem *item );
     void mGridPropertiesButton_clicked();
@@ -125,12 +125,15 @@ class QgsLayoutMapWidget: public QgsLayoutItemBaseWidget, private Ui::QgsLayoutM
     void overviewSymbolChanged();
     void showLabelSettings();
     void switchToMoveContentTool();
+    void aboutToShowBookmarkMenu();
 
   private:
     QPointer< QgsLayoutItemMap > mMapItem;
     QgsLayoutItemPropertiesWidget *mItemPropertiesWidget = nullptr;
     QgsLayoutDesignerInterface *mInterface = nullptr;
     QPointer< QgsLayoutMapLabelingWidget > mLabelWidget;
+    QMenu *mBookmarkMenu = nullptr;
+    QgsBookmarkManagerProxyModel *mBookmarkModel = nullptr;
 
     //! Sets extent of composer map from line edits
     void updateComposerExtentFromGui();
@@ -204,6 +207,7 @@ class QgsLayoutMapLabelingWidget: public QgsLayoutItemBaseWidget, private Ui::Qg
     void labelMarginChanged( double val );
     void labelMarginUnitsChanged();
     void showPartialsToggled( bool checked );
+    void showUnplacedToggled( bool checked );
 
   private:
     QPointer< QgsLayoutItemMap > mMapItem;

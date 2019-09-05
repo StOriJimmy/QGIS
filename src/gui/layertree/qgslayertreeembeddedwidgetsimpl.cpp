@@ -15,6 +15,7 @@
 
 #include "qgslayertreeembeddedwidgetsimpl.h"
 
+#include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSlider>
@@ -34,9 +35,14 @@ QgsLayerTreeOpacityWidget::QgsLayerTreeOpacityWidget( QgsMapLayer *layer )
   QLabel *l = new QLabel( QStringLiteral( "Opacity" ), this );
   mSlider = new QSlider( Qt::Horizontal, this );
   mSlider->setRange( 0, 1000 );
+  int sliderW = static_cast< int >( QFontMetricsF( font() ).width( 'X' ) * 16 * Qgis::UI_SCALE_FACTOR );
+  mSlider->setMinimumWidth( sliderW / 2 );
+  mSlider->setMaximumWidth( sliderW );
   QHBoxLayout *lay = new QHBoxLayout();
+  QSpacerItem *spacerItem = new QSpacerItem( 1, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Minimum );
   lay->addWidget( l );
   lay->addWidget( mSlider );
+  lay->addItem( spacerItem );
   setLayout( lay );
 
   // timer for delayed transparency update - for more responsive GUI
@@ -60,7 +66,7 @@ QgsLayerTreeOpacityWidget::QgsLayerTreeOpacityWidget( QgsMapLayer *layer )
 
     case QgsMapLayerType::RasterLayer:
     {
-      mSlider->setValue( 1000 - qobject_cast<QgsRasterLayer *>( mLayer )->renderer()->opacity() * 1000 );
+      mSlider->setValue( qobject_cast<QgsRasterLayer *>( mLayer )->renderer()->opacity() * 1000 );
       // TODO: there is no signal for raster layers
       break;
     }
@@ -100,7 +106,7 @@ void QgsLayerTreeOpacityWidget::updateOpacityFromSlider()
     }
     case QgsMapLayerType::RasterLayer:
     {
-      qobject_cast<QgsRasterLayer *>( mLayer )->renderer()->setOpacity( 1 - value / 1000.0 );
+      qobject_cast<QgsRasterLayer *>( mLayer )->renderer()->setOpacity( value / 1000.0 );
       break;
     }
 

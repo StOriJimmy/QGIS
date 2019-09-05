@@ -56,6 +56,11 @@ int QgsLayoutItemPage::type() const
   return QgsLayoutItemRegistry::LayoutPage;
 }
 
+QString QgsLayoutItemPage::displayName() const
+{
+  return QObject::tr( "Page" );
+}
+
 void QgsLayoutItemPage::setPageSize( const QgsLayoutSize &size )
 {
   attemptResize( size );
@@ -173,6 +178,11 @@ class QgsLayoutItemPageUndoCommand: public QgsLayoutItemUndoCommand
 QgsAbstractLayoutUndoCommand *QgsLayoutItemPage::createCommand( const QString &text, int id, QUndoCommand *parent )
 {
   return new QgsLayoutItemPageUndoCommand( this, text, id, parent );
+}
+
+QgsLayoutItem::ExportLayerBehavior QgsLayoutItemPage::exportLayerBehavior() const
+{
+  return CanGroupWithItemsOfSameType;
 }
 
 void QgsLayoutItemPage::redraw()

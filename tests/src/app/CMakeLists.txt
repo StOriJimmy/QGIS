@@ -3,6 +3,7 @@
 # the UI file won't be wrapped!
 INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/external/nmea
   ${CMAKE_SOURCE_DIR}/src/core
   ${CMAKE_SOURCE_DIR}/src/core/auth
   ${CMAKE_SOURCE_DIR}/src/core/expression
@@ -11,6 +12,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/src/core/locator
   ${CMAKE_SOURCE_DIR}/src/core/metadata
   ${CMAKE_SOURCE_DIR}/src/core/mesh
+  ${CMAKE_SOURCE_DIR}/src/core/pal
   ${CMAKE_SOURCE_DIR}/src/core/raster
   ${CMAKE_SOURCE_DIR}/src/core/symbology
   ${CMAKE_SOURCE_DIR}/src/core/validity
@@ -82,7 +84,7 @@ MACRO (ADD_QGIS_TEST testname testsrc)
   ENDIF(WITH_QWTPOLAR AND NOT WITH_INTERNAL_QWTPOLAR)
   IF(WIN32)
     ADD_DEFINITIONS(-DQWT_DLL)
-    TARGET_LINK_LIBRARIES(qgis_${testname} DbgHelp)
+    TARGET_LINK_LIBRARIES(qgis_${testname} dbghelp)
   ENDIF(WIN32)
   IF (APPLE)
     TARGET_LINK_LIBRARIES(qgis_${testname} ${APP_SERVICES_LIBRARY} )
@@ -108,10 +110,12 @@ ADD_QGIS_TEST(fieldcalculatortest testqgsfieldcalculator.cpp)
 ADD_QGIS_TEST(maptooladdfeatureline testqgsmaptooladdfeatureline.cpp)
 ADD_QGIS_TEST(maptooladdfeaturepoint testqgsmaptooladdfeaturepoint.cpp)
 ADD_QGIS_TEST(maptoolidentifyaction testqgsmaptoolidentifyaction.cpp)
+ADD_QGIS_TEST(maptoollabel testqgsmaptoollabel.cpp)
 ADD_QGIS_TEST(maptoolselect testqgsmaptoolselect.cpp)
 ADD_QGIS_TEST(maptoolreshape testqgsmaptoolreshape.cpp)
 ADD_QGIS_TEST(maptoolcircularstringtest testqgsmaptoolcircularstring.cpp)
 ADD_QGIS_TEST(maptoolcircletest testqgsmaptoolcircle.cpp)
+ADD_QGIS_TEST(maptoolmovefeaturetest testqgsmaptoolmovefeature.cpp)
 ADD_QGIS_TEST(maptoolellipsetest testqgsmaptoolellipse.cpp)
 ADD_QGIS_TEST(maptoolrectangletest testqgsmaptoolrectangle.cpp)
 ADD_QGIS_TEST(maptoolregularpolygontest testqgsmaptoolregularpolygon.cpp)
@@ -124,3 +128,4 @@ ADD_QGIS_TEST(projectproperties testqgsprojectproperties.cpp)
 ADD_QGIS_TEST(layoutvaliditychecks testqgsapplayoutvaliditychecks.cpp)
 ADD_QGIS_TEST(meshcalculator testqgsmeshcalculatordialog.cpp)
 ADD_QGIS_TEST(meshlayerpropertiesdialog testqgsmeshlayerpropertiesdialog.cpp)
+ADD_QGIS_TEST(gpsinformationwidget testqgsgpsinformationwidget.cpp)

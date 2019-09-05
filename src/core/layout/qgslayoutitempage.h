@@ -58,7 +58,7 @@ class CORE_EXPORT QgsLayoutItemPage : public QgsLayoutItem
 
   public:
 
-    //! Page orientiation
+    //! Page orientation
     enum Orientation
     {
       Portrait, //!< Portrait orientation
@@ -84,6 +84,7 @@ class CORE_EXPORT QgsLayoutItemPage : public QgsLayoutItem
     static QgsLayoutItemPage *create( QgsLayout *layout ) SIP_FACTORY;
 
     int type() const override;
+    QString displayName() const override;
 
     /**
      * Sets the \a size of the page.
@@ -109,7 +110,7 @@ class CORE_EXPORT QgsLayoutItemPage : public QgsLayoutItem
     QgsLayoutSize pageSize() const;
 
     /**
-     * Returns the page orientiation.
+     * Returns the page orientation.
      * \note There is no direct setter for page orientation - use setPageSize() instead.
      */
     Orientation orientation() const;
@@ -124,6 +125,7 @@ class CORE_EXPORT QgsLayoutItemPage : public QgsLayoutItem
     QRectF boundingRect() const override;
     void attemptResize( const QgsLayoutSize &size, bool includesFrame = false ) override;
     QgsAbstractLayoutUndoCommand *createCommand( const QString &text, int id, QUndoCommand *parent = nullptr ) override SIP_FACTORY;
+    ExportLayerBehavior exportLayerBehavior() const override;
 
   public slots:
 

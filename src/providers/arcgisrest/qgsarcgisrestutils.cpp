@@ -201,6 +201,7 @@ std::unique_ptr< QgsMultiPoint > QgsArcGisRestUtils::parseEsriGeometryMultiPoint
   const QVariantList coordsList = geometryData[QStringLiteral( "points" )].toList();
 
   std::unique_ptr< QgsMultiPoint > multiPoint = qgis::make_unique< QgsMultiPoint >();
+  multiPoint->reserve( coordsList.size() );
   for ( const QVariant &coordData : coordsList )
   {
     const QVariantList coordList = coordData.toList();
@@ -237,6 +238,7 @@ std::unique_ptr< QgsMultiCurve > QgsArcGisRestUtils::parseEsriGeometryPolyline( 
   if ( pathsList.isEmpty() )
     return nullptr;
   std::unique_ptr< QgsMultiCurve > multiCurve = qgis::make_unique< QgsMultiCurve >();
+  multiCurve->reserve( pathsList.size() );
   for ( const QVariant &pathData : qgis::as_const( pathsList ) )
   {
     std::unique_ptr< QgsCompoundCurve > curve = parseCompoundCurve( pathData.toList(), pointType );
@@ -275,6 +277,7 @@ std::unique_ptr< QgsMultiSurface > QgsArcGisRestUtils::parseEsriGeometryPolygon(
 
   std::sort( curves.begin(), curves.end(), []( const QgsCompoundCurve * a, const QgsCompoundCurve * b )->bool{ double a_area = 0.0; double b_area = 0.0; a->sumUpArea( a_area ); b->sumUpArea( b_area ); return std::abs( a_area ) > std::abs( b_area ); } );
   std::unique_ptr< QgsMultiSurface > result = qgis::make_unique< QgsMultiSurface >();
+  result->reserve( curves.size() );
   while ( !curves.isEmpty() )
   {
     QgsCompoundCurve *exterior = curves.takeFirst();
@@ -1381,6 +1384,15 @@ void QgsArcGisRestUtils::addLayerItems( const std::function< void( const QString
     }
   }
 
+  // Add root MapServer as raster layer when multiple layers are listed
+  if ( filter != QgsArcGisRestUtils::Vector && layerInfoList.count() > 1 && serviceData.contains( QStringLiteral( "supportedImageFormatTypes" ) ) )
+  {
+    const QString name = QStringLiteral( "(%1)" ).arg( QObject::tr( "All layers" ) );
+    const QString description = serviceData.value( QStringLiteral( "Comments" ) ).toString();
+    visitor( 0, 0, name, description, parentUrl, false, authid, format );
+  }
+
+  // Add root ImageServer as layer
   if ( serviceData.value( QStringLiteral( "serviceDataType" ) ).toString().startsWith( QLatin1String( "esriImageService" ) ) )
   {
     const QString name = serviceData.value( QStringLiteral( "name" ) ).toString();

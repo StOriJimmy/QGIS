@@ -32,6 +32,7 @@ class QgsLayoutItem;
 class QgsProcessingAlgorithm;
 class QgsProcessingModelAlgorithm;
 class QgsProcessingContext;
+class QgsLayoutMultiFrame;
 
 /**
  * \ingroup core
@@ -252,6 +253,33 @@ class CORE_EXPORT QgsExpressionContextUtils
     static void setLayoutItemVariables( QgsLayoutItem *item, const QVariantMap &variables );
 
     /**
+     * Creates a new scope which contains variables and functions relating to a QgsLayoutMultiFrame.
+     * \see setLayoutMultiFrameVariable()
+     * \see setLayoutMultiFrameVariables()
+     * \since QGIS 3.10
+     */
+    static QgsExpressionContextScope *multiFrameScope( const QgsLayoutMultiFrame *frame ) SIP_FACTORY;
+
+    /**
+     * Sets a layout multi \a frame context variable, with the given \a name and \a value.
+     * This variable will be contained within scopes retrieved via
+     * multiFrameScope().
+     * \see setLayoutItemVariables()
+     * \see multiFrameScope()
+     * \since QGIS 3.10
+     */
+    static void setLayoutMultiFrameVariable( QgsLayoutMultiFrame *frame, const QString &name, const QVariant &value );
+
+    /**
+     * Sets all layout multiframe context variables for an \a frame. Existing variables will be removed and replaced
+     * with the \a variables specified.
+     * \see setLayoutMultiFrameVariable()
+     * \see multiFrameScope()
+     * \since QGIS 3.10
+     */
+    static void setLayoutMultiFrameVariables( QgsLayoutMultiFrame *frame, const QVariantMap &variables );
+
+    /**
      * Helper function for creating an expression context which contains just a feature and fields
      * collection. Generally this method should not be used as the created context does not include
      * standard scopes such as the global and project scopes.
@@ -303,5 +331,41 @@ class CORE_EXPORT QgsExpressionContextUtils
     friend class QgsLayoutItemMap; // needs access to GetLayerVisibility
 
 };
+
+#ifndef SIP_RUN
+
+/**
+ * \class QgsExpressionContextScopePopper
+ * RAII class to pop scope from an expression context on destruction
+ * \ingroup core
+ * \since QGIS 3.10
+ */
+class QgsExpressionContextScopePopper
+{
+  public:
+
+    /**
+     * Constructor for QgsExpressionContextScopePopper. Appends the specified \a scope to the
+     * end of \a context. \a scope will be automatically popped and deleted when this QgsExpressionContextScopePopper
+     * is destroyed.
+     *
+     * Ownership of \a scope is transferred to the popper, but it is guaranteed to exist of the lifetime
+     * of the popper.
+     */
+    QgsExpressionContextScopePopper( QgsExpressionContext &context, QgsExpressionContextScope *scope )
+      : mContext( context )
+    {
+      mContext.appendScope( scope );
+    }
+
+    ~QgsExpressionContextScopePopper()
+    {
+      delete mContext.popScope();
+    }
+
+  private:
+    QgsExpressionContext &mContext;
+};
+#endif
 
 #endif // QGSEXPRESSIONCONTEXTUTILS_H

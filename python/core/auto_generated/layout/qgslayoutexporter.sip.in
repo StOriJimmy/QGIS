@@ -184,11 +184,25 @@ Constructor for PdfExportSettings
 
       bool forceVectorOutput;
 
+      bool appendGeoreference;
+
       bool exportMetadata;
 
       QgsLayoutRenderContext::Flags flags;
 
       QgsRenderContext::TextRenderFormat textRenderFormat;
+
+      bool simplifyGeometries;
+
+      bool writeGeoPdf;
+
+      bool useIso32000ExtensionFormatGeoreferencing;
+
+      bool useOgcBestPracticeFormatGeoreferencing;
+
+      bool includeGeoPdfFeatures;
+
+      QStringList exportThemes;
 
     };
 
@@ -284,11 +298,15 @@ Constructor for SvgExportSettings
 
       bool exportAsLayers;
 
+      bool exportLabelsToSeparateLayers;
+
       bool exportMetadata;
 
       QgsLayoutRenderContext::Flags flags;
 
       QgsRenderContext::TextRenderFormat textRenderFormat;
+
+      bool simplifyGeometries;
 
     };
 

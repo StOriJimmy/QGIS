@@ -29,6 +29,7 @@
 #include "qgsfeaturefiltermodel.h"
 #include "qgsgui.h"
 #include "qgsmapcanvas.h"
+#include "qgsvectorlayertools.h"
 
 class TestQgsRelationReferenceWidget : public QObject
 {
@@ -48,6 +49,7 @@ class TestQgsRelationReferenceWidget : public QObject
     void testInvalidRelation();
     void testSetGetForeignKey();
     void testIdentifyOnMap();
+    void testAddEntry();
 
   private:
     std::unique_ptr<QgsVectorLayer> mLayer1;
@@ -247,17 +249,17 @@ void TestQgsRelationReferenceWidget::testChainFilterRefreshed()
   QCOMPARE( cbs[2]->currentText(), QString( "raccord" ) );
 
   // update foreign key
-  w.setForeignKey( QVariant( 12 ) );
+  w.setForeignKeys( QVariantList() << QVariant( 12 ) );
   QCOMPARE( cbs[0]->currentText(), QString( "steel" ) );
   QCOMPARE( cbs[1]->currentText(), QString( "120" ) );
   QCOMPARE( cbs[2]->currentText(), QString( "collar" ) );
 
-  w.setForeignKey( QVariant( 10 ) );
+  w.setForeignKeys( QVariantList() << QVariant( 10 ) );
   QCOMPARE( cbs[0]->currentText(), QString( "iron" ) );
   QCOMPARE( cbs[1]->currentText(), QString( "120" ) );
   QCOMPARE( cbs[2]->currentText(), QString( "brides" ) );
 
-  w.setForeignKey( QVariant( 11 ) );
+  w.setForeignKeys( QVariantList() << QVariant( 11 ) );
   QCOMPARE( cbs[0]->currentText(), QString( "iron" ) );
   QCOMPARE( cbs[1]->currentText(), QString( "120" ) );
   QCOMPARE( cbs[2]->currentText(), QString( "sleeve" ) );
@@ -287,14 +289,14 @@ void TestQgsRelationReferenceWidget::testChainFilterDeleteForeignKey()
   QCOMPARE( cbs[2]->isEnabled(), false );
 
   // set a foreign key
-  w.setForeignKey( QVariant( 11 ) );
+  w.setForeignKeys( QVariantList() << QVariant( 11 ) );
 
   QCOMPARE( cbs[0]->currentText(), QString( "iron" ) );
   QCOMPARE( cbs[1]->currentText(), QString( "120" ) );
   QCOMPARE( cbs[2]->currentText(), QString( "sleeve" ) );
 
   // delete the foreign key
-  w.deleteForeignKey();
+  w.deleteForeignKeys();
 
   QCOMPARE( cbs[0]->currentText(), QString( "material" ) );
   QCOMPARE( cbs[0]->isEnabled(), true );
@@ -326,18 +328,18 @@ void TestQgsRelationReferenceWidget::testSetGetForeignKey()
 
   QSignalSpy spy( &w, SIGNAL( foreignKeyChanged( QVariant ) ) );
 
-  w.setForeignKey( 11 );
-  QCOMPARE( w.foreignKey(), QVariant( 11 ) );
+  w.setForeignKeys( QVariantList() << 11 );
+  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 11 ) );
   QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "(11)" ) );
   QCOMPARE( spy.count(), 1 );
 
-  w.setForeignKey( 12 );
-  QCOMPARE( w.foreignKey(), QVariant( 12 ) );
+  w.setForeignKeys( QVariantList() << 12 );
+  QCOMPARE( w.foreignKeys().at( 0 ), QVariant( 12 ) );
   QCOMPARE( w.mComboBox->currentText(), QStringLiteral( "(12)" ) );
   QCOMPARE( spy.count(), 2 );
 
-  w.setForeignKey( QVariant( QVariant::Int ) );
-  Q_ASSERT( w.foreignKey().isNull() );
+  w.setForeignKeys( QVariantList() << QVariant( QVariant::Int ) );
+  Q_ASSERT( w.foreignKeys().at( 0 ).isNull() );
   QCOMPARE( spy.count(), 3 );
 }
 
@@ -373,6 +375,51 @@ void TestQgsRelationReferenceWidget::testIdentifyOnMap()
 
   mLayer1->rollBack();
 }
+
+
+void TestQgsRelationReferenceWidget::testAddEntry()
+{
+  // check that a new added entry in referenced layer populate correctly the
+  // referencing combobox
+  QWidget parentWidget;
+  QgsRelationReferenceWidget w( &parentWidget );
+  QVERIFY( mLayer1->startEditing() );
+  w.setRelation( *mRelation, true );
+  w.init();
+
+  // Monkey patch gui vector layer tool in order to simple add a new feature in
+  // referenced layer
+  class DummyVectorLayerTools : public QgsVectorLayerTools
+  {
+      bool addFeature( QgsVectorLayer *layer, const QgsAttributeMap &, const QgsGeometry &, QgsFeature *feat = nullptr ) const override
+      {
+        feat->setAttribute( QStringLiteral( "pk" ), 13 );
+        feat->setAttribute( QStringLiteral( "material" ), "steel" );
+        feat->setAttribute( QStringLiteral( "diameter" ), 140 );
+        feat->setAttribute( QStringLiteral( "raccord" ), "collar" );
+        layer->addFeature( *feat );
+        return true;
+      }
+
+      bool startEditing( QgsVectorLayer * ) const override {return true;}
+
+      bool stopEditing( QgsVectorLayer *, bool = true ) const override {return true;}
+
+      bool saveEdits( QgsVectorLayer * ) const override {return true;}
+  };
+
+  QgsAttributeEditorContext context;
+  DummyVectorLayerTools tools;
+  context.setVectorLayerTools( &tools );
+  w.setEditorContext( context, nullptr, nullptr );
+  w.addEntry();
+
+  Q_NOWARN_DEPRECATED_PUSH
+  QCOMPARE( w.mComboBox->identifierValue().toInt(), 13 );
+  Q_NOWARN_DEPRECATED_POP
+}
+
+
 
 QGSTEST_MAIN( TestQgsRelationReferenceWidget )
 #include "testqgsrelationreferencewidget.moc"

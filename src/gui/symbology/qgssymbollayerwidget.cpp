@@ -1777,6 +1777,7 @@ QgsMarkerLineSymbolLayerWidget::QgsMarkerLineSymbolLayerWidget( QgsVectorLayer *
   connect( radVertexFirst, &QAbstractButton::clicked, this, &QgsMarkerLineSymbolLayerWidget::setPlacement );
   connect( radCentralPoint, &QAbstractButton::clicked, this, &QgsMarkerLineSymbolLayerWidget::setPlacement );
   connect( radCurvePoint, &QAbstractButton::clicked, this, &QgsMarkerLineSymbolLayerWidget::setPlacement );
+  connect( radSegmentCentralPoint, &QAbstractButton::clicked, this, &QgsMarkerLineSymbolLayerWidget::setPlacement );
 }
 
 void QgsMarkerLineSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
@@ -1810,6 +1811,8 @@ void QgsMarkerLineSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
     radCentralPoint->setChecked( true );
   else if ( mLayer->placement() == QgsTemplatedLineSymbolLayerBase::CurvePoint )
     radCurvePoint->setChecked( true );
+  else if ( mLayer->placement() == QgsTemplatedLineSymbolLayerBase::SegmentCenter )
+    radSegmentCentralPoint->setChecked( true );
   else
     radVertexFirst->setChecked( true );
 
@@ -1893,6 +1896,8 @@ void QgsMarkerLineSymbolLayerWidget::setPlacement()
     mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::FirstVertex );
   else if ( radCurvePoint->isChecked() )
     mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::CurvePoint );
+  else if ( radSegmentCentralPoint->isChecked() )
+    mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::SegmentCenter );
   else
     mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::CentralPoint );
 
@@ -2010,6 +2015,7 @@ QgsHashedLineSymbolLayerWidget::QgsHashedLineSymbolLayerWidget( QgsVectorLayer *
   connect( radVertexFirst, &QAbstractButton::clicked, this, &QgsHashedLineSymbolLayerWidget::setPlacement );
   connect( radCentralPoint, &QAbstractButton::clicked, this, &QgsHashedLineSymbolLayerWidget::setPlacement );
   connect( radCurvePoint, &QAbstractButton::clicked, this, &QgsHashedLineSymbolLayerWidget::setPlacement );
+  connect( radSegmentCentralPoint, &QAbstractButton::clicked, this, &QgsHashedLineSymbolLayerWidget::setPlacement );
 }
 
 void QgsHashedLineSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
@@ -2045,6 +2051,8 @@ void QgsHashedLineSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
     radCentralPoint->setChecked( true );
   else if ( mLayer->placement() == QgsTemplatedLineSymbolLayerBase::CurvePoint )
     radCurvePoint->setChecked( true );
+  else if ( mLayer->placement() == QgsTemplatedLineSymbolLayerBase::SegmentCenter )
+    radSegmentCentralPoint->setChecked( true );
   else
     radVertexFirst->setChecked( true );
 
@@ -2143,6 +2151,8 @@ void QgsHashedLineSymbolLayerWidget::setPlacement()
     mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::FirstVertex );
   else if ( radCurvePoint->isChecked() )
     mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::CurvePoint );
+  else if ( radSegmentCentralPoint->isChecked() )
+    mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::SegmentCenter );
   else
     mLayer->setPlacement( QgsTemplatedLineSymbolLayerBase::CentralPoint );
 
@@ -3319,6 +3329,7 @@ void QgsFontMarkerSymbolLayerWidget::setSymbolLayer( QgsSymbolLayer *layer )
   }
   widgetChar->blockSignals( false );
   whileBlocking( mCharLineEdit )->setText( mLayer->character() );
+  mCharPreview->setFont( layerFont );
 
   //block
   whileBlocking( spinOffsetX )->setValue( mLayer->offset().x() );
@@ -3368,6 +3379,7 @@ void QgsFontMarkerSymbolLayerWidget::setFontFamily( const QFont &font )
 {
   mLayer->setFontFamily( font.family() );
   widgetChar->setFont( font );
+  mCharPreview->setFont( font );
   emit changed();
 }
 
@@ -3398,6 +3410,8 @@ void QgsFontMarkerSymbolLayerWidget::setAngle( double angle )
 
 void QgsFontMarkerSymbolLayerWidget::setCharacterFromText( const QString &text )
 {
+  mCharPreview->setText( text );
+
   if ( text.isEmpty() )
     return;
 
@@ -3408,7 +3422,10 @@ void QgsFontMarkerSymbolLayerWidget::setCharacterFromText( const QString &text )
     bool ok = false;
     unsigned int value = text.toUInt( &ok, 0 );
     if ( ok )
+    {
       character = QChar( value );
+      mCharPreview->setText( character );
+    }
   }
 
   if ( character != mLayer->character() )
@@ -3428,8 +3445,15 @@ void QgsFontMarkerSymbolLayerWidget::setCharacterFromText( const QString &text )
 
 void QgsFontMarkerSymbolLayerWidget::setCharacter( QChar chr )
 {
+  if ( mLayer->character().length() > 1 || QGuiApplication::keyboardModifiers() & Qt::ControlModifier )
+  {
+    mCharLineEdit->insert( chr );
+    return;
+  }
+
   mLayer->setCharacter( chr );
   whileBlocking( mCharLineEdit )->setText( chr );
+  mCharPreview->setText( chr );
   emit changed();
 }
 

@@ -176,6 +176,20 @@ StackAboveMapLayer.
 .. versionadded:: 3.6
 %End
 
+    virtual bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
+%Docstring
+Accepts the specified style entity ``visitor``, causing it to visit all style entities associated
+with the map item.
+
+Returns ``True`` if the visitor should continue visiting other objects, or ``False`` if visiting
+should be canceled.
+
+.. versionadded:: 3.10
+%End
+
+    virtual QgsExpressionContext createExpressionContext() const;
+
+
   protected:
 
 
@@ -258,6 +272,18 @@ Returns whether any items within the stack contain advanced effects,
 such as blending modes.
 %End
 
+    bool hasEnabledItems() const;
+%Docstring
+Returns ``True`` if the stack has any currently enabled items.
+
+.. versionadded:: 3.10
+%End
+
+    QgsLayoutItemMapItem *item( int index ) const;
+%Docstring
+Returns a reference to the item at the specified ``index`` within the stack.
+%End
+
   protected:
 
     void addItem( QgsLayoutItemMapItem *item /Transfer/ );
@@ -313,11 +339,6 @@ Moves an item which matching ``itemId`` up the stack, causing it to be rendered 
     QgsLayoutItemMapItem *item( const QString &itemId ) const;
 %Docstring
 Returns a reference to an item which matching ``itemId`` within the stack.
-%End
-
-    QgsLayoutItemMapItem *item( int index ) const;
-%Docstring
-Returns a reference to the item at the specified ``index`` within the stack.
 %End
 
 

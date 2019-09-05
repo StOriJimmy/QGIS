@@ -26,6 +26,7 @@
 #include "qgsproperty.h"
 #include "qgsexpressioncontext.h"
 #include "qgssymbollayerutils.h"
+#include "qgsapplication.h"
 
 #include <QSize>
 #include <QPainter>
@@ -81,7 +82,7 @@ void QgsSymbolLayer::initPropertyDefinitions()
     { QgsSymbolLayer::PropertyOpacity, QgsPropertyDefinition( "alpha", QObject::tr( "Opacity" ), QgsPropertyDefinition::Opacity, origin )},
     { QgsSymbolLayer::PropertyCustomDash, QgsPropertyDefinition( "customDash", QgsPropertyDefinition::DataTypeString, QObject::tr( "Custom dash pattern" ), QObject::tr( "[<b><dash>;<space></b>] e.g. '8;2;1;2'" ), origin )},
     { QgsSymbolLayer::PropertyCapStyle, QgsPropertyDefinition( "capStyle", QObject::tr( "Line cap style" ), QgsPropertyDefinition::CapStyle, origin )},
-    { QgsSymbolLayer::PropertyPlacement, QgsPropertyDefinition( "placement", QgsPropertyDefinition::DataTypeString, QObject::tr( "Marker placement" ), QObject::tr( "string " ) + "[<b>interval</b>|<b>vertex</b>|<b>lastvertex</b>|<b>firstvertex</b>|<b>centerpoint</b>|<b>curvepoint</b>]", origin )},
+    { QgsSymbolLayer::PropertyPlacement, QgsPropertyDefinition( "placement", QgsPropertyDefinition::DataTypeString, QObject::tr( "Marker placement" ), QObject::tr( "string " ) + "[<b>interval</b>|<b>vertex</b>|<b>lastvertex</b>|<b>firstvertex</b>|<b>centerpoint</b>|<b>curvepoint</b>|<b>segmentcenter</b>]", origin )},
     { QgsSymbolLayer::PropertyInterval, QgsPropertyDefinition( "interval", QObject::tr( "Marker interval" ), QgsPropertyDefinition::DoublePositive, origin )},
     { QgsSymbolLayer::PropertyOffsetAlongLine, QgsPropertyDefinition( "offsetAlongLine", QObject::tr( "Offset along line" ), QgsPropertyDefinition::DoublePositive, origin )},
     { QgsSymbolLayer::PropertyAverageAngleLength, QgsPropertyDefinition( "averageAngleLength", QObject::tr( "Average line angles over" ), QgsPropertyDefinition::DoublePositive, origin )},
@@ -163,23 +164,21 @@ Qt::BrushStyle QgsSymbolLayer::dxfBrushStyle() const
 
 QgsPaintEffect *QgsSymbolLayer::paintEffect() const
 {
-  return mPaintEffect;
+  return mPaintEffect.get();
 }
 
 void QgsSymbolLayer::setPaintEffect( QgsPaintEffect *effect )
 {
-  delete mPaintEffect;
-  mPaintEffect = effect;
+  if ( effect == mPaintEffect.get() )
+    return;
+
+  mPaintEffect.reset( effect );
 }
 
 QgsSymbolLayer::QgsSymbolLayer( QgsSymbol::SymbolType type, bool locked )
   : mType( type )
-  , mEnabled( true )
   , mLocked( locked )
-
 {
-  mPaintEffect = QgsPaintEffectRegistry::defaultStack();
-  mPaintEffect->setEnabled( false );
 }
 
 void QgsSymbolLayer::prepareExpressions( const QgsSymbolRenderContext &context )
@@ -204,10 +203,7 @@ const QgsPropertiesDefinition &QgsSymbolLayer::propertyDefinitions()
   return sPropertyDefinitions;
 }
 
-QgsSymbolLayer::~QgsSymbolLayer()
-{
-  delete mPaintEffect;
-}
+QgsSymbolLayer::~QgsSymbolLayer() = default;
 
 bool QgsSymbolLayer::isCompatibleWithSymbol( QgsSymbol *symbol ) const
 {
@@ -392,7 +388,10 @@ void QgsSymbolLayer::copyPaintEffect( QgsSymbolLayer *destLayer ) const
   if ( !destLayer || !mPaintEffect )
     return;
 
-  destLayer->setPaintEffect( mPaintEffect->clone() );
+  if ( !QgsPaintEffectRegistry::isDefaultStack( mPaintEffect.get() ) )
+    destLayer->setPaintEffect( mPaintEffect->clone() );
+  else
+    destLayer->setPaintEffect( nullptr );
 }
 
 QgsMarkerSymbolLayer::QgsMarkerSymbolLayer( bool locked )
@@ -468,9 +467,10 @@ void QgsMarkerSymbolLayer::markerOffset( QgsSymbolRenderContext &context, double
   {
     context.setOriginalValueVariable( QgsSymbolLayerUtils::encodePoint( mOffset ) );
     QVariant exprVal = mDataDefinedProperties.value( QgsSymbolLayer::PropertyOffset, context.renderContext().expressionContext() );
-    if ( exprVal.isValid() )
+    bool ok = false;
+    const QPointF offset = QgsSymbolLayerUtils::toPoint( exprVal, &ok );
+    if ( ok )
     {
-      QPointF offset = QgsSymbolLayerUtils::decodePoint( exprVal.toString() );
       offsetX = offset.x();
       offsetY = offset.y();
     }

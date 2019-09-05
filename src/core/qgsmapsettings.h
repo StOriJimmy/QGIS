@@ -38,6 +38,7 @@ class QPainter;
 class QgsCoordinateTransform;
 class QgsScaleCalculator;
 class QgsMapRendererJob;
+class QgsRenderedFeatureHandlerInterface;
 
 /**
  * \class QgsLabelBlockingRegion
@@ -101,6 +102,22 @@ class CORE_EXPORT QgsMapSettings
      * of output size. Use visibleExtent() to get the resulting extent.
      */
     void setExtent( const QgsRectangle &rect, bool magnified = true );
+
+    /**
+     * Returns the buffer in map units to use around the visible extent for rendering
+     * symbols whose corresponding geometries are outside the visible extent.
+     * \see setExtentBuffer()
+     * \since QGIS 3.10
+     */
+    double extentBuffer() const;
+
+    /**
+     * Sets the buffer in map units to use around the visible extent for rendering
+     * symbols whose corresponding geometries are outside the visible extent. This
+     * is useful when using tiles to avoid cut symbols at tile boundaries.
+     * \since QGIS 3.10
+     */
+    void setExtentBuffer( double buffer );
 
     //! Returns the size of the resulting map image
     QSize outputSize() const;
@@ -531,6 +548,55 @@ class CORE_EXPORT QgsMapSettings
      */
     QList< QgsLabelBlockingRegion > labelBlockingRegions() const { return mLabelBlockingRegions; }
 
+    /**
+     * Sets the simplification setting to use when rendering vector layers.
+     *
+     * If the simplify \a method is enabled, it will override all other layer-specific simplification
+     * settings and will apply to all vector layers rendered for the map.
+     *
+     * This can be used to specify global simplification methods to apply during map exports,
+     * e.g. to allow vector layers to be simplified to an appropriate maximum level of detail
+     * during PDF exports.
+     *
+     * The default is to use no global simplification, and fallback to individual layer's settings instead.
+     *
+     * \see simplifyMethod()
+     *
+     * \since QGIS 3.10
+     */
+    void setSimplifyMethod( const QgsVectorSimplifyMethod &method ) { mSimplifyMethod = method; }
+
+    /**
+     * Returns the simplification settings to use when rendering vector layers.
+     *
+     * If enabled, it will override all other layer-specific simplification
+     * settings and will apply to all vector layers rendered for the map.
+     *
+     * The default is to use no global simplification, and fallback to individual layer's settings instead.
+     *
+     * \see setSimplifyMethod()
+     * \since QGIS 3.10
+     */
+    const QgsVectorSimplifyMethod &simplifyMethod() const { return mSimplifyMethod; }
+
+    /**
+     * Adds a rendered feature \a handler to use while rendering the map settings.
+     *
+     * Ownership of \a handler is NOT transferred, and it is the caller's responsibility to ensure
+     * that the handler exists for the lifetime of the map render job.
+     *
+     * \see renderedFeatureHandlers()
+     * \since QGIS 3.10
+     */
+    void addRenderedFeatureHandler( QgsRenderedFeatureHandlerInterface *handler );
+
+    /**
+     * Returns the list of rendered feature handlers to use while rendering the map settings.
+     * \see addRenderedFeatureHandler()
+     * \since QGIS 3.10
+     */
+    QList< QgsRenderedFeatureHandlerInterface * > renderedFeatureHandlers() const;
+
   protected:
 
     double mDpi;
@@ -539,6 +605,7 @@ class CORE_EXPORT QgsMapSettings
     float mDevicePixelRatio = 1.0;
 
     QgsRectangle mExtent;
+    double mExtentBuffer = 0.0;
 
     double mRotation = 0.0;
     double mMagnificationFactor = 1.0;
@@ -583,6 +650,8 @@ class CORE_EXPORT QgsMapSettings
 
     QgsGeometry mLabelBoundaryGeometry;
 
+    QgsVectorSimplifyMethod mSimplifyMethod;
+
 #ifdef QGISDEBUG
     bool mHasTransformContext = false;
 #endif
@@ -592,6 +661,7 @@ class CORE_EXPORT QgsMapSettings
   private:
 
     QList< QgsLabelBlockingRegion > mLabelBlockingRegions;
+    QList< QgsRenderedFeatureHandlerInterface * > mRenderedFeatureHandlers;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsMapSettings::Flags )

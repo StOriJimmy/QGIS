@@ -276,19 +276,30 @@ class CORE_EXPORT QgsRuleBasedLabeling : public QgsAbstractVectorLayerLabeling
          * call prepare() on sub-providers and populate attributeNames
          * \note not available in Python bindings
          */
-        void prepare( const QgsRenderContext &context, QSet<QString> &attributeNames, RuleToProviderMap &subProviders ) SIP_SKIP;
+        void prepare( QgsRenderContext &context, QSet<QString> &attributeNames, RuleToProviderMap &subProviders ) SIP_SKIP;
 
         /**
          * register individual features
          * \note not available in Python bindings
          */
-        RegisterResult registerFeature( const QgsFeature &feature, QgsRenderContext &context, RuleToProviderMap &subProviders, const QgsGeometry &obstacleGeometry = QgsGeometry() ) SIP_SKIP;
+        RegisterResult registerFeature( const QgsFeature &feature, QgsRenderContext &context, RuleToProviderMap &subProviders, const QgsGeometry &obstacleGeometry = QgsGeometry(), const QgsSymbol *symbol = nullptr ) SIP_SKIP;
 
         /**
          * Returns TRUE if this rule or any of its children requires advanced composition effects
          * to render.
          */
         bool requiresAdvancedEffects() const;
+
+        /**
+         * Accepts the specified symbology \a visitor, causing it to visit all child rules associated
+         * with the rule.
+         *
+         * Returns TRUE if the visitor should continue visiting other objects, or FALSE if visiting
+         * should be canceled.
+         *
+         * \since QGIS 3.10
+         */
+        bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
 
       private:
 #ifdef SIP_RUN
@@ -361,6 +372,7 @@ class CORE_EXPORT QgsRuleBasedLabeling : public QgsAbstractVectorLayerLabeling
     QgsVectorLayerLabelProvider *provider( QgsVectorLayer *layer ) const override SIP_SKIP;
     QStringList subProviders() const override;
     QgsPalLayerSettings settings( const QString &providerId = QString() ) const override;
+    bool accept( QgsStyleEntityVisitorInterface *visitor ) const override;
 
     /**
      * Set pal settings for a specific provider (takes ownership).
@@ -393,9 +405,9 @@ class CORE_EXPORT QgsRuleBasedLabelProvider : public QgsVectorLayerLabelProvider
 
     // reimplemented
 
-    bool prepare( const QgsRenderContext &context, QSet<QString> &attributeNames ) override;
+    bool prepare( QgsRenderContext &context, QSet<QString> &attributeNames ) override;
 
-    void registerFeature( const QgsFeature &feature, QgsRenderContext &context, const QgsGeometry &obstacleGeometry = QgsGeometry() ) override;
+    void registerFeature( const QgsFeature &feature, QgsRenderContext &context, const QgsGeometry &obstacleGeometry = QgsGeometry(), const QgsSymbol *symbol = nullptr ) override;
 
     //! create a label provider
     virtual QgsVectorLayerLabelProvider *createProvider( QgsVectorLayer *layer, const QString &providerId, bool withFeatureLoop, const QgsPalLayerSettings *settings );

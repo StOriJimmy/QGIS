@@ -164,6 +164,7 @@ cmake -G "%CMAKEGEN%" ^
 	-D QCA_INCLUDE_DIR=%OSGEO4W_ROOT%\apps\Qt5\include\QtCrypto ^
 	-D QCA_LIBRARY=%OSGEO4W_ROOT%\apps\Qt5\lib\qca-qt5.lib ^
 	-D QSCINTILLA_LIBRARY=%OSGEO4W_ROOT%\apps\Qt5\lib\qscintilla2.lib ^
+	-D DART_TESTING_TIMEOUT=60 ^
 	%CMAKE_OPT% ^
 	%SRCDIR:\=/%
 if errorlevel 1 (echo cmake failed & goto error)
@@ -301,13 +302,11 @@ for %%i in (%packages%) do (
 	"apps/%PACKAGENAME%/plugins/basicauthmethod.dll" ^
 	"apps/%PACKAGENAME%/plugins/delimitedtextprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/esritokenauthmethod.dll" ^
-	"apps/%PACKAGENAME%/plugins/gdalprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/geonodeprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/gpxprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/identcertauthmethod.dll" ^
 	"apps/%PACKAGENAME%/plugins/mssqlprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/db2provider.dll" ^
-	"apps/%PACKAGENAME%/plugins/ogrprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/owsprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/pkcs12authmethod.dll" ^
 	"apps/%PACKAGENAME%/plugins/pkipathsauthmethod.dll" ^
@@ -338,7 +337,7 @@ if errorlevel 1 (echo tar common failed & goto error)
 	"apps/%PACKAGENAME%/bin/qgis_server.dll" ^
 	"apps/%PACKAGENAME%/bin/admin.sld" ^
 	"apps/%PACKAGENAME%/bin/wms_metadata.xml" ^
-	"apps/%PACKAGENAME%/resources/server/schemaExtension.xsd" ^
+	"apps/%PACKAGENAME%/resources/server/" ^
 	"apps/%PACKAGENAME%/server/" ^
 	"apps/%PACKAGENAME%/python/qgis/_server.pyd" ^
 	"apps/%PACKAGENAME%/python/qgis/server/" ^

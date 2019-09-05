@@ -5,6 +5,7 @@ ENDIF(NOT WIN32)
 
 SET(QGIS_APP_SRCS
   ${CMAKE_SOURCE_DIR}/external/nmea/gmath.c
+  ${CMAKE_SOURCE_DIR}/external/nmea/time.c
 
   qgisapp.cpp
   qgisappinterface.cpp
@@ -29,11 +30,12 @@ SET(QGIS_APP_SRCS
   qgsattributesforminitcode.cpp
   qgsattributetabledialog.cpp
   qgsbookmarks.cpp
+  qgsbookmarkeditordialog.cpp
   qgsclipboard.cpp
   qgscustomization.cpp
   qgscustomprojectiondialog.cpp
   qgsdatumtransformtablewidget.cpp
-  qgsdiscoverrelationsdlg.cpp
+  qgsdiscoverrelationsdialog.cpp
   qgsdxfexportdialog.cpp
   qgsformannotationdialog.cpp
   qgsguivectorlayertools.cpp
@@ -121,6 +123,8 @@ SET(QGIS_APP_SRCS
   decorations/qgsdecorationtitledialog.cpp
   decorations/qgsdecorationcopyright.cpp
   decorations/qgsdecorationcopyrightdialog.cpp
+  decorations/qgsdecorationimage.cpp
+  decorations/qgsdecorationimagedialog.cpp
   decorations/qgsdecorationlayoutextent.cpp
   decorations/qgsdecorationlayoutextentdialog.cpp
   decorations/qgsdecorationnortharrow.cpp
@@ -184,6 +188,7 @@ SET(QGIS_APP_SRCS
 
   browser/qgsinbuiltdataitemproviders.cpp
 
+  layout/qgsgeopdflayertreemodel.cpp
   layout/qgslayoutaddpagesdialog.cpp
   layout/qgslayoutapputils.cpp
   layout/qgslayoutatlaswidget.cpp
@@ -202,6 +207,7 @@ SET(QGIS_APP_SRCS
   layout/qgslayoutmapwidget.cpp
   layout/qgslayoutmapgridwidget.cpp
   layout/qgslayoutpagepropertieswidget.cpp
+  layout/qgslayoutpdfexportoptionsdialog.cpp
   layout/qgslayoutpicturewidget.cpp
   layout/qgslayoutpolygonwidget.cpp
   layout/qgslayoutpolylinewidget.cpp
@@ -270,13 +276,14 @@ SET (QGIS_APP_MOC_HDRS
   qgsattributesforminitcode.h
   qgsattributetabledialog.h
   qgsbookmarks.h
+  qgsbookmarkeditordialog.h
   qgsclipboard.h
   qgscustomization.h
   qgscustomprojectiondialog.h
   qgsdatumtransformtablewidget.h
   qgsdelattrdialog.h
   qgsdiagramproperties.h
-  qgsdiscoverrelationsdlg.h
+  qgsdiscoverrelationsdialog.h
   qgsdisplayangle.h
   qgsdxfexportdialog.h
   qgsfeatureaction.h
@@ -382,6 +389,8 @@ SET (QGIS_APP_MOC_HDRS
   decorations/qgsdecorationtitledialog.h
   decorations/qgsdecorationcopyright.h
   decorations/qgsdecorationcopyrightdialog.h
+  decorations/qgsdecorationimage.h
+  decorations/qgsdecorationimagedialog.h
   decorations/qgsdecorationlayoutextent.h
   decorations/qgsdecorationlayoutextentdialog.h
   decorations/qgsdecorationnortharrow.h
@@ -419,6 +428,7 @@ SET (QGIS_APP_MOC_HDRS
 
   browser/qgsinbuiltdataitemproviders.h
 
+  layout/qgsgeopdflayertreemodel.h
   layout/qgslayoutaddpagesdialog.h
   layout/qgslayoutappmenuprovider.h
   layout/qgslayoutatlaswidget.h
@@ -436,6 +446,7 @@ SET (QGIS_APP_MOC_HDRS
   layout/qgslayoutmapwidget.h
   layout/qgslayoutmapgridwidget.h
   layout/qgslayoutpagepropertieswidget.h
+  layout/qgslayoutpdfexportoptionsdialog.h
   layout/qgslayoutpicturewidget.h
   layout/qgslayoutpolygonwidget.h
   layout/qgslayoutpolylinewidget.h
@@ -489,6 +500,9 @@ IF (WITH_3D)
     3d/qgs3dmapconfigwidget.cpp
     3d/qgs3dmaptool.cpp
     3d/qgs3dmaptoolidentify.cpp
+    3d/qgs3dmaptoolmeasureline.cpp
+    3d/qgs3dmeasuredialog.cpp
+    3d/qgs3dnavigationwidget.cpp
     3d/qgslightswidget.cpp
     3d/qgsline3dsymbolwidget.cpp
     3d/qgsmesh3dsymbolwidget.cpp
@@ -511,6 +525,9 @@ IF (WITH_3D)
     3d/qgs3dmapconfigwidget.h
     3d/qgs3dmaptool.h
     3d/qgs3dmaptoolidentify.h
+    3d/qgs3dmaptoolmeasureline.h
+    3d/qgs3dmeasuredialog.h
+    3d/qgs3dnavigationwidget.h
     3d/qgslightswidget.h
     3d/qgsline3dsymbolwidget.h
     3d/qgsmesh3dsymbolwidget.h

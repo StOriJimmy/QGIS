@@ -815,7 +815,7 @@ Lists all the style in db split into related to the layer and not related to
 :param names: the list in which will be stored the style names
 :param msgError:
 
-:return: - the number of styles related to current layer
+:return: - the number of styles related to current layer (-1 on not implemented)
          - descriptions: the list in which will be stored the style descriptions
 
 .. note::
@@ -967,6 +967,16 @@ Number of features rendered with specified legend key. Features must be first
 calculated by countSymbolFeatures()
 
 :return: number of features rendered by symbol or -1 if failed or counts are not available
+%End
+
+    QgsFeatureIds symbolFeatureIds( const QString &legendKey ) const;
+%Docstring
+Ids of features rendered with specified legend key. Features must be first
+calculated by countSymbolFeatures()
+
+:return: Ids of features rendered by symbol or -1 if failed or Ids are not available
+
+.. versionadded:: 3.10
 %End
 
     virtual FeatureAvailability hasFeatures() const ${SIP_FINAL};
@@ -1419,8 +1429,8 @@ Adds topological points for every vertex of the geometry.
 
     int addTopologicalPoints( const QgsPointXY &p );
 %Docstring
-Adds a vertex to segments which intersect point p but don't
-already have a vertex there. If a feature already has a vertex at position p,
+Adds a vertex to segments which intersect point ``p`` but don't
+already have a vertex there. If a feature already has a vertex at position ``p``,
 no additional vertex is inserted. This method is useful for topological
 editing.
 
@@ -1434,6 +1444,27 @@ editing.
    by a call to startEditing(). Changes made to features using this method are not committed
    to the underlying data provider until a commitChanges() call is made. Any uncommitted
    changes can be discarded by calling rollBack().
+%End
+
+    int addTopologicalPoints( const QgsPoint &p );
+%Docstring
+Adds a vertex to segments which intersect point ``p`` but don't
+already have a vertex there. If a feature already has a vertex at position ``p``,
+no additional vertex is inserted. This method is useful for topological
+editing.
+
+:param p: position of the vertex
+
+:return: 0 in case of success
+
+.. note::
+
+   Calls to addTopologicalPoints() are only valid for layers in which edits have been enabled
+   by a call to startEditing(). Changes made to features using this method are not committed
+   to the underlying data provider until a commitChanges() call is made. Any uncommitted
+   changes can be discarded by calling rollBack().
+
+.. versionadded:: 3.10
 %End
 
 
@@ -2279,6 +2310,12 @@ Configuration and logic to apply automatically on any edit happening on this lay
 
 
 
+    QgsStoredExpressionManager *storedExpressionManager();
+%Docstring
+Returns the manager of the stored expressions for this layer.
+
+.. versionadded:: 3.10
+%End
 
   public slots:
 
@@ -2356,6 +2393,9 @@ Sets the coordinate transform context to ``transformContext``
 
 .. versionadded:: 3.8
 %End
+
+    virtual bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
+
 
   signals:
 

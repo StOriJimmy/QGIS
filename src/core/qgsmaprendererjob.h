@@ -62,6 +62,16 @@ struct LayerRenderJob
   QgsWeakMapLayerPointer layer;
   int renderingTime; //!< Time it took to render the layer in ms (it is -1 if not rendered or still rendering)
   QStringList errors; //!< Rendering errors
+
+  /**
+   * Identifies the associated layer by ID.
+   *
+   * \warning This should NEVER be used to retrieve map layers during a render job, and instead
+   * is intended for use as a string identifier only.
+   *
+   * \since QGIS 3.10
+   */
+  QString layerId;
 };
 
 typedef QList<LayerRenderJob> LayerRenderJobs;
@@ -260,14 +270,29 @@ class CORE_EXPORT QgsMapRendererJob : public QObject
     QHash< QgsWeakMapLayerPointer, int > mPerLayerRenderingTime;
 
     /**
+     * TRUE if layer rendering time should be recorded.
+     */
+    bool mRecordRenderingTime = true;
+
+    /**
      * Prepares the cache for storing the result of labeling. Returns FALSE if
      * the render cannot use cached labels and should not cache the result.
      * \note not available in Python bindings
      */
     bool prepareLabelCache() const SIP_SKIP;
 
-    //! \note not available in Python bindings
-    LayerRenderJobs prepareJobs( QPainter *painter, QgsLabelingEngine *labelingEngine2 ) SIP_SKIP;
+    /**
+     * Creates a list of layer rendering jobs and prepares them for later render.
+     *
+     * The \a painter argument specifies the destination painter. If not set, the jobs will
+     * be rendered to temporary images. Alternatively, if the \a deferredPainterSet flag is TRUE,
+     * then a \a painter value of NULLPTR skips this default temporary image creation. In this case,
+     * it is the caller's responsibility to correctly set a painter for all rendered jobs prior
+     * to rendering them.
+     *
+     * \note not available in Python bindings
+     */
+    LayerRenderJobs prepareJobs( QPainter *painter, QgsLabelingEngine *labelingEngine2, bool deferredPainterSet = false ) SIP_SKIP;
 
     /**
      * Prepares a labeling job.

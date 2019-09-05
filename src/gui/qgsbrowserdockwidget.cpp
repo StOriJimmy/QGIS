@@ -24,7 +24,7 @@
 #include <QPlainTextDocumentLayout>
 #include <QSortFilterProxyModel>
 
-#include "qgsbrowsermodel.h"
+#include "qgsbrowserguimodel.h"
 #include "qgsbrowsertreeview.h"
 #include "qgslogger.h"
 #include "qgsrasterlayer.h"
@@ -45,7 +45,7 @@
 
 #include <QDragEnterEvent>
 
-QgsBrowserDockWidget::QgsBrowserDockWidget( const QString &name, QgsBrowserModel *browserModel, QWidget *parent )
+QgsBrowserDockWidget::QgsBrowserDockWidget( const QString &name, QgsBrowserGuiModel *browserModel, QWidget *parent )
   : QgsDockWidget( parent )
   , mModel( browserModel )
   , mPropertiesWidgetEnabled( false )
@@ -281,6 +281,7 @@ void QgsBrowserDockWidget::addFavoriteDirectory( const QString &favDir, const QS
 void QgsBrowserDockWidget::setMessageBar( QgsMessageBar *bar )
 {
   mMessageBar = bar;
+  mModel->setMessageBar( bar );
 }
 
 QgsMessageBar *QgsBrowserDockWidget::messageBar()
@@ -443,7 +444,7 @@ void QgsBrowserDockWidget::showProperties()
   {
     QgsBrowserPropertiesDialog *dialog = new QgsBrowserPropertiesDialog( settingsSection(), this );
     dialog->setAttribute( Qt::WA_DeleteOnClose );
-    dialog->setItem( item );
+    dialog->setItem( item, createContext() );
     dialog->show();
   }
 }
@@ -562,7 +563,8 @@ void QgsBrowserDockWidget::setPropertiesWidget()
     {
       QModelIndex index = mProxyModel->mapToSource( indexes.value( 0 ) );
       QgsDataItem *item = mModel->dataItem( index );
-      QgsBrowserPropertiesWidget *propertiesWidget = QgsBrowserPropertiesWidget::createWidget( item, mPropertiesWidget );
+      QgsDataItemGuiContext context = createContext();
+      QgsBrowserPropertiesWidget *propertiesWidget = QgsBrowserPropertiesWidget::createWidget( item, context, mPropertiesWidget );
       if ( propertiesWidget )
       {
         propertiesWidget->setCondensedMode( true );

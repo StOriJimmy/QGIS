@@ -644,6 +644,9 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
     mWMSImageQualitySpinBox->setValue( imageQuality );
   }
 
+  // WMS tileBuffer
+  mWMSTileBufferSpinBox->setValue( QgsProject::instance()->readNumEntry( QStringLiteral( "WMSTileBuffer" ), QStringLiteral( "/" ), 0 ) );
+
   mWMSMaxAtlasFeaturesSpinBox->setValue( QgsProject::instance()->readNumEntry( QStringLiteral( "WMSMaxAtlasFeatures" ), QStringLiteral( "/" ), 1 ) );
 
   QString defaultValueToolTip = tr( "In case of no other information to evaluate the map unit sized symbols, it uses default scale (on projected CRS) or default map units per mm (on geographic CRS)." );
@@ -1323,6 +1326,9 @@ void QgsProjectProperties::apply()
     QgsProject::instance()->writeEntry( QStringLiteral( "WMSImageQuality" ), QStringLiteral( "/" ), imageQualityValue );
   }
 
+  // WMS TileBuffer
+  QgsProject::instance()->writeEntry( QStringLiteral( "WMSTileBuffer" ), QStringLiteral( "/" ), mWMSTileBufferSpinBox->value() );
+
   int maxAtlasFeatures = mWMSMaxAtlasFeaturesSpinBox->value();
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSMaxAtlasFeatures" ), QStringLiteral( "/" ), maxAtlasFeatures );
 
@@ -1686,18 +1692,21 @@ void QgsProjectProperties::srIdUpdated()
   if ( mCrs.isValid() )
   {
     cmbEllipsoid->setEnabled( true );
-    // attempt to reset the projection ellipsoid according to the srs
-    int index = 0;
-    for ( int i = 0; i < mEllipsoidList.length(); i++ )
+    if ( cmbEllipsoid->currentIndex() != 0 )
     {
-      // TODO - use parameters instead of acronym
-      if ( mEllipsoidList[ i ].acronym == mCrs.ellipsoidAcronym() )
+      // attempt to reset the projection ellipsoid according to the srs
+      int index = 0;
+      for ( int i = 0; i < mEllipsoidList.length(); i++ )
       {
-        index = i;
-        break;
+        // TODO - use parameters instead of acronym
+        if ( mEllipsoidList[ i ].acronym == mCrs.ellipsoidAcronym() )
+        {
+          index = i;
+          break;
+        }
       }
+      updateEllipsoidUI( index );
     }
-    updateEllipsoidUI( index );
   }
   else
   {
@@ -2387,8 +2396,7 @@ void QgsProjectProperties::populateEllipsoidList()
   }
   // Add all items to selector
 
-  const auto constMEllipsoidList = mEllipsoidList;
-  for ( const EllipsoidDefs &i : constMEllipsoidList )
+  for ( const EllipsoidDefs &i : qgis::as_const( mEllipsoidList ) )
   {
     cmbEllipsoid->addItem( i.description );
   }

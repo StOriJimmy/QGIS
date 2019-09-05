@@ -21,6 +21,8 @@
 #include "qgspainteffectregistry.h"
 #include "qgspainteffect.h"
 #include "qgspointclusterrenderer.h"
+#include "qgsstyleentityvisitor.h"
+#include "qgsrenderedfeaturehandlerinterface.h"
 
 #include <QPainter>
 #include <cmath>
@@ -239,6 +241,21 @@ QSet<QString> QgsPointDisplacementRenderer::usedAttributes( const QgsRenderConte
   return attr;
 }
 
+bool QgsPointDisplacementRenderer::accept( QgsStyleEntityVisitorInterface *visitor ) const
+{
+  if ( !QgsPointDistanceRenderer::accept( visitor ) )
+    return false;
+
+  if ( mCenterSymbol )
+  {
+    QgsStyleSymbolEntity entity( mCenterSymbol.get() );
+    if ( !visitor->visit( QgsStyleEntityVisitorInterface::StyleLeaf( &entity, QStringLiteral( "center" ), QObject::tr( "Center Symbol" ) ) ) )
+      return false;
+  }
+
+  return true;
+}
+
 void QgsPointDisplacementRenderer::setCenterSymbol( QgsMarkerSymbol *symbol )
 {
   mCenterSymbol.reset( symbol );
@@ -446,6 +463,14 @@ void QgsPointDisplacementRenderer::drawSymbols( const ClusteredGroup &group, Qgs
     context.expressionContext().setFeature( groupIt->feature );
     groupIt->symbol()->startRender( context );
     groupIt->symbol()->renderPoint( *symbolPosIt, &( groupIt->feature ), context, -1, groupIt->isSelected );
+    if ( context.hasRenderedFeatureHandlers() )
+    {
+      const QgsGeometry bounds( QgsGeometry::fromRect( QgsRectangle( groupIt->symbol()->bounds( *symbolPosIt, context, groupIt->feature ) ) ) );
+      const QList< QgsRenderedFeatureHandlerInterface * > handlers = context.renderedFeatureHandlers();
+      QgsRenderedFeatureHandlerInterface::RenderedFeatureContext featureContext( context );
+      for ( QgsRenderedFeatureHandlerInterface *handler : handlers )
+        handler->handleRenderedFeature( groupIt->feature, bounds, featureContext );
+    }
     groupIt->symbol()->stopRender( context );
   }
 }

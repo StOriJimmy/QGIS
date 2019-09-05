@@ -2391,9 +2391,10 @@ bool QgsSvgMarkerSymbolLayer::writeDxf( QgsDxfExport &e, double mmMapUnitScaleFa
   if ( mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyOffset ) )
   {
     context.setOriginalValueVariable( QgsSymbolLayerUtils::encodePoint( mOffset ) );
-    QString offsetString = mDataDefinedProperties.valueAsString( QgsSymbolLayer::PropertyOffset, context.renderContext().expressionContext(), QString(), &ok );
+    const QVariant val = mDataDefinedProperties.value( QgsSymbolLayer::PropertyOffset, context.renderContext().expressionContext(), QString() );
+    const QPointF res = QgsSymbolLayerUtils::toPoint( val, &ok );
     if ( ok )
-      offset = QgsSymbolLayerUtils::decodePoint( offsetString );
+      offset = res;
   }
   double offsetX = offset.x();
   double offsetY = offset.y();
@@ -3015,12 +3016,27 @@ void QgsFontMarkerSymbolLayer::startRender( QgsSymbolRenderContext &context )
   mPen.setWidthF( context.renderContext().convertToPainterUnits( mStrokeWidth, mStrokeWidthUnit, mStrokeWidthMapUnitScale ) );
 
   mFont = QFont( mFontFamily );
-  mFont.setPixelSize( context.renderContext().convertToPainterUnits( mSize, mSizeUnit, mSizeMapUnitScale ) );
+  const double sizePixels = context.renderContext().convertToPainterUnits( mSize, mSizeUnit, mSizeMapUnitScale );
+  mNonZeroFontSize = !qgsDoubleNear( sizePixels, 0.0 );
+  // if a non zero, but small pixel size results, round up to 2 pixels so that a "dot" is at least visible
+  // (if we set a <=1 pixel size here Qt will reset the font to a default size, leading to much too large symbols)
+  mFont.setPixelSize( std::max( 2, static_cast< int >( std::round( sizePixels ) ) ) );
   delete mFontMetrics;
   mFontMetrics = new QFontMetrics( mFont );
   mChrWidth = mFontMetrics->width( mString );
   mChrOffset = QPointF( mChrWidth / 2.0, -mFontMetrics->ascent() / 2.0 );
   mOrigSize = mSize; // save in case the size would be data defined
+
+  // use caching only when not using a data defined character
+  mUseCachedPath = !mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyCharacter );
+  if ( mUseCachedPath )
+  {
+    QPointF chrOffset = mChrOffset;
+    double chrWidth;
+    QString charToRender = characterToRender( context, chrOffset, chrWidth );
+    mCachedPath = QPainterPath();
+    mCachedPath.addText( -chrOffset.x(), -chrOffset.y(), mFont, charToRender );
+  }
 }
 
 void QgsFontMarkerSymbolLayer::stopRender( QgsSymbolRenderContext &context )
@@ -3120,7 +3136,7 @@ double QgsFontMarkerSymbolLayer::calculateSize( QgsSymbolRenderContext &context 
 void QgsFontMarkerSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderContext &context )
 {
   QPainter *p = context.renderContext().painter();
-  if ( !p )
+  if ( !p || !mNonZeroFontSize )
     return;
 
   QTransform transform;
@@ -3165,6 +3181,7 @@ void QgsFontMarkerSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderContex
     }
   }
 
+  p->save();
   p->setBrush( mBrush );
   if ( !qgsDoubleNear( penWidth, 0.0 ) )
   {
@@ -3176,7 +3193,6 @@ void QgsFontMarkerSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderContex
   {
     p->setPen( Qt::NoPen );
   }
-  p->save();
 
   QPointF chrOffset = mChrOffset;
   double chrWidth;
@@ -3189,7 +3205,7 @@ void QgsFontMarkerSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderContex
   double angle = 0;
   calculateOffsetAndRotation( context, sizeToRender, hasDataDefinedRotation, offset, angle );
 
-  transform.translate( point.x() + offset.x(), point.y() + offset.y() );
+  p->translate( point.x() + offset.x(), point.y() + offset.y() );
 
   if ( !qgsDoubleNear( angle, 0.0 ) )
     transform.rotate( angle );
@@ -3200,9 +3216,17 @@ void QgsFontMarkerSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderContex
     transform.scale( s, s );
   }
 
-  QPainterPath path;
-  path.addText( -chrOffset.x(), -chrOffset.y(), mFont, charToRender );
-  p->drawPath( transform.map( path ) );
+  if ( mUseCachedPath )
+  {
+    p->drawPath( transform.map( mCachedPath ) );
+  }
+  else
+  {
+    QPainterPath path;
+    path.addText( -chrOffset.x(), -chrOffset.y(), mFont, charToRender );
+    p->drawPath( transform.map( path ) );
+  }
+
   p->restore();
 }
 

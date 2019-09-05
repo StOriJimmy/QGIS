@@ -74,17 +74,26 @@ endif(NOT MSVC)
 
 IF (IOS)
     SET (DEFAULT_FORCE_STATIC_LIBS TRUE)
+    SET (DEFAULT_FORCE_STATIC_PROVIDERS TRUE)
 ELSE (IOS)
     SET (DEFAULT_FORCE_STATIC_LIBS FALSE)
+    SET (DEFAULT_FORCE_STATIC_PROVIDERS FALSE)
 ENDIF (IOS)
+
 SET (FORCE_STATIC_LIBS ${DEFAULT_FORCE_STATIC_LIBS} CACHE BOOL "Determines whether libraries should be static only")
 MARK_AS_ADVANCED(FORCE_STATIC_LIBS)
-
-IF(FORCE_STATIC_LIBS)
-  SET(LIBRARY_TYPE STATIC)
+IF (FORCE_STATIC_LIBS)
+  SET (LIBRARY_TYPE STATIC)
 ELSE (FORCE_STATIC_LIBS)
-  SET(LIBRARY_TYPE SHARED)
+  SET (LIBRARY_TYPE SHARED)
 ENDIF (FORCE_STATIC_LIBS)
+
+SET (FORCE_STATIC_PROVIDERS ${DEFAULT_FORCE_STATIC_PROVIDERS} CACHE BOOL "Determines whether data providers should be static only")
+MARK_AS_ADVANCED(FORCE_STATIC_PROVIDERS)
+IF (FORCE_STATIC_PROVIDERS)
+  # following variable is used in qgsconfig.h
+  SET (HAVE_STATIC_PROVIDERS TRUE)
+ENDIF (FORCE_STATIC_PROVIDERS)
 
 # in generated makefiles use relative paths so the project dir is moveable
 # Note commented out since it cause problems but it would be nice to resolve these and enable
@@ -175,6 +184,14 @@ IF(WITH_CORE)
   IF ( WITH_DESKTOP AND NOT WITH_ANALYSIS )
     MESSAGE(FATAL_ERROR "Desktop cannot be built without analysis")
   ENDIF()
+
+  IF ( WITH_DESKTOP )
+    # The qgis_desktop target is meant to build a minimal but complete running QGIS during development
+    # This should help to reduce compile time while still having a "complete enough" QGIS for most of the development
+    ADD_CUSTOM_TARGET(qgis_desktop
+    	DEPENDS qgis qgispython pycore pygui pyanalysis postgresprovider staged-plugins pyplugin-installer
+    )
+  ENDIF ()
 
   # try to configure and build MDAL support
   SET (WITH_INTERNAL_MDAL TRUE CACHE BOOL "Determines whether MDAL support should be built")
@@ -358,7 +375,11 @@ IF(WITH_CORE)
   FIND_PACKAGE(Qt5Xml REQUIRED)
   FIND_PACKAGE(Qt5Svg REQUIRED)
   FIND_PACKAGE(Qt5Concurrent REQUIRED)
-  FIND_PACKAGE(Qt5PrintSupport REQUIRED)
+  IF (NOT IOS)
+    FIND_PACKAGE(Qt5PrintSupport REQUIRED)
+  ELSE(NOT IOS)
+    ADD_DEFINITIONS(-DQT_NO_PRINTER)
+  ENDIF(NOT IOS)
   FIND_PACKAGE(Qt5Positioning)
   IF (WITH_QTWEBKIT)
     FIND_PACKAGE(Qt5WebKit REQUIRED)
@@ -454,9 +475,9 @@ CONFIGURE_FILE(
   "${CMAKE_SOURCE_DIR}/cmake_templates/CTestCustom.cmake.in"
   "${CMAKE_BINARY_DIR}/CTestCustom.cmake"
   IMMEDIATE @ONLY)
-# For server side testing we have no X, we can use xfvb as a fake x
-# sudo apt-get install xfvb
-add_custom_target(check COMMAND xvfb-run --server-args=-screen\ 10\ 1024x768x24 ctest --output-on-failure)
+# For server side testing we have no X, we can use xvfb as a fake x
+# sudo apt-get install xvfb
+add_custom_target(check COMMAND xvfb-run --server-args=-screen\ 0\ 1024x768x24 ctest --output-on-failure)
 ENDIF(ENABLE_TESTS)
 
 IF (WITH_CORE)
@@ -492,6 +513,7 @@ IF (PEDANTIC)
     SET(_warnings "${_warnings} /wd4231 ")  # nonstandard extension used : 'identifier' before template explicit instantiation (used in Qt template classes)
     SET(_warnings "${_warnings} /wd4244 ")  # conversion from '...' to '...' possible loss of data
     SET(_warnings "${_warnings} /wd4251 ")  # needs to have dll-interface to be used by clients of class (occurs in Qt template classes)
+    SET(_warnings "${_warnings} /wd4267 ")  # 'argument': conversion from 'size_t' to 'int', possible loss of data
     SET(_warnings "${_warnings} /wd4275 ")  # non dll-interface class '...' used as base for dll-interface class '...'
     SET(_warnings "${_warnings} /wd4290 ")  # c++ exception specification ignored except to indicate a function is not __declspec(nothrow) (occurs in sip generated bindings)
     SET(_warnings "${_warnings} /wd4456 ")  # declaration of '...' hides previous local declaration

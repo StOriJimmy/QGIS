@@ -30,6 +30,7 @@
 #include "qgsproject.h"
 #include <gdal.h>
 #include "qgsmessagelog.h"
+#include "qgsgui.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -47,8 +48,9 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
   , mResolutionState( OriginalResolution )
 {
   setupUi( this );
+  QgsGui::instance()->enableAutoGeometryRestore( this );
   connect( mRawModeRadioButton, &QRadioButton::toggled, this, &QgsRasterLayerSaveAsDialog::mRawModeRadioButton_toggled );
-  connect( mFormatComboBox, static_cast<void ( QComboBox::* )( const QString & )>( &QComboBox::currentIndexChanged ), this, &QgsRasterLayerSaveAsDialog::mFormatComboBox_currentIndexChanged );
+  connect( mFormatComboBox, &QComboBox::currentTextChanged, this, &QgsRasterLayerSaveAsDialog::mFormatComboBox_currentIndexChanged );
   connect( mResolutionRadioButton, &QRadioButton::toggled, this, &QgsRasterLayerSaveAsDialog::mResolutionRadioButton_toggled );
   connect( mOriginalResolutionPushButton, &QPushButton::clicked, this, &QgsRasterLayerSaveAsDialog::mOriginalResolutionPushButton_clicked );
   connect( mXResolutionLineEdit, &QLineEdit::textEdited, this, &QgsRasterLayerSaveAsDialog::mXResolutionLineEdit_textEdited );
@@ -168,7 +170,6 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
   recalcResolutionSize();
 
   QgsSettings settings;
-  restoreGeometry( settings.value( QStringLiteral( "Windows/RasterLayerSaveAs/geometry" ) ).toByteArray() );
 
   if ( mTileModeCheckBox->isChecked() )
   {
@@ -231,12 +232,6 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
     }
     okButton->setEnabled( tmplFileInfo.absoluteDir().exists() );
   } );
-}
-
-QgsRasterLayerSaveAsDialog::~QgsRasterLayerSaveAsDialog()
-{
-  QgsSettings settings;
-  settings.setValue( QStringLiteral( "Windows/RasterLayerSaveAs/geometry" ), saveGeometry() );
 }
 
 void QgsRasterLayerSaveAsDialog::insertAvailableOutputFormats()

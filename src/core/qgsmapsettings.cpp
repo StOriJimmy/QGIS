@@ -40,6 +40,7 @@ QgsMapSettings::QgsMapSettings()
   , mSegmentationTolerance( M_PI_2 / 90 )
 {
   mScaleCalculator.setMapUnits( QgsUnitTypes::DistanceUnknownUnit );
+  mSimplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
 
   updateDerived();
 }
@@ -85,6 +86,16 @@ void QgsMapSettings::setExtent( const QgsRectangle &extent, bool magnified )
   mExtent = magnifiedExtent;
 
   updateDerived();
+}
+
+double QgsMapSettings::extentBuffer() const
+{
+  return mExtentBuffer;
+}
+
+void QgsMapSettings::setExtentBuffer( const double buffer )
+{
+  mExtentBuffer = buffer;
 }
 
 double QgsMapSettings::rotation() const
@@ -665,4 +676,14 @@ QgsGeometry QgsMapSettings::labelBoundaryGeometry() const
 void QgsMapSettings::setLabelBoundaryGeometry( const QgsGeometry &boundary )
 {
   mLabelBoundaryGeometry = boundary;
+}
+
+void QgsMapSettings::addRenderedFeatureHandler( QgsRenderedFeatureHandlerInterface *handler )
+{
+  mRenderedFeatureHandlers.append( handler );
+}
+
+QList<QgsRenderedFeatureHandlerInterface *> QgsMapSettings::renderedFeatureHandlers() const
+{
+  return mRenderedFeatureHandlers;
 }

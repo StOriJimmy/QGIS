@@ -119,7 +119,7 @@ QgsPropertyDefinition::QgsPropertyDefinition( const QString &name, const QString
 
     case Size2D:
       mTypes = DataTypeString;
-      mHelpText = QObject::tr( "double size [<b>width,height</b>]" );
+      mHelpText = QObject::tr( "string of doubles '<b>width,height</b>' or array of doubles <b>[width, height]</b>" );
       break;
 
     case LineStyle:
@@ -163,7 +163,7 @@ QgsPropertyDefinition::QgsPropertyDefinition( const QString &name, const QString
 
     case Offset:
       mTypes = DataTypeString;
-      mHelpText = QObject::tr( "double offset [<b>x,y</b>]" );
+      mHelpText = QObject::tr( "string of doubles '<b>x,y</b>' or array of doubles <b>[x, y]</b>" );
       break;
 
     case Custom:
@@ -309,6 +309,7 @@ void QgsProperty::setExpressionString( const QString &expression )
   d->expressionString = expression;
   d->expression = QgsExpression( expression );
   d->expressionPrepared = false;
+  d->expressionIsInvalid = false;
 }
 
 QString QgsProperty::expressionString() const
@@ -370,10 +371,12 @@ bool QgsProperty::prepare( const QgsExpressionContext &context ) const
       {
         d->expressionReferencedCols.clear();
         d->expressionPrepared = false;
+        d->expressionIsInvalid = true;
         return false;
       }
 
       d->expressionPrepared = true;
+      d->expressionIsInvalid = false;
       d->expressionReferencedCols = d->expression.referencedColumns();
       return true;
     }
@@ -407,9 +410,15 @@ QSet<QString> QgsProperty::referencedFields( const QgsExpressionContext &context
 
     case ExpressionBasedProperty:
     {
+      if ( d->expressionIsInvalid )
+        return QSet< QString >();
+
       d.detach();
       if ( !d->expressionPrepared && !prepare( context ) )
+      {
+        d->expressionIsInvalid = true;
         return QSet< QString >();
+      }
 
       return d->expressionReferencedCols;
     }
@@ -466,7 +475,9 @@ QVariant QgsProperty::propertyValue( const QgsExpressionContext &context, const 
 
     case ExpressionBasedProperty:
     {
-      d.detach();
+      if ( d->expressionIsInvalid )
+        return defaultValue;
+
       if ( !d->expressionPrepared && !prepare( context ) )
         return defaultValue;
 
@@ -706,6 +717,7 @@ bool QgsProperty::loadVariant( const QVariant &property )
 
       d->expression = QgsExpression( d->expressionString );
       d->expressionPrepared = false;
+      d->expressionIsInvalid = false;
       d->expressionReferencedCols.clear();
       break;
 

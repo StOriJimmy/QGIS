@@ -121,7 +121,12 @@
         <file>themes/default/cap_flat.svg</file>
         <file>themes/default/cap_round.svg</file>
         <file>themes/default/cap_square.svg</file>
-        <file>themes/default/console/iconClassConsole.svg</file>
+        <file>themes/default/classification_methods/mClassificationEqualCount.svg</file>
+        <file>themes/default/classification_methods/mClassificationEqualInterval.svg</file>
+        <file>themes/default/classification_methods/mClassificationLogarithmic.svg</file>
+        <file>themes/default/classification_methods/mClassificationNaturalBreak.svg</file>
+        <file>themes/default/classification_methods/mClassificationPrettyBreak.svg</file>
+        <file>themes/default/classification_methods/mClassificationStandardDeviation.svg</file>
         <file>themes/default/console/iconClearConsole.svg</file>
         <file>themes/default/console/iconCodepadConsole.svg</file>
         <file>themes/default/console/iconHelpConsole.svg</file>
@@ -177,6 +182,7 @@
         <file>themes/default/mActionDistributeTop.svg</file>
         <file>themes/default/mActionDistributeVCenter.svg</file>
         <file>themes/default/mActionDistributeVSpace.svg</file>
+        <file>themes/default/mActionAddExpression.svg</file>
         <file>themes/default/mActionAddLayer.svg</file>
         <file>themes/default/mActionAddMeshLayer.svg</file>
         <file>themes/default/mActionAddAllToOverview.svg</file>
@@ -502,6 +508,7 @@
         <file>themes/default/mIconWms.svg</file>
         <file>themes/default/mIconZip.svg</file>
         <file>themes/default/mIconZoom.svg</file>
+        <file>themes/default/mItemBookmark.svg</file>
         <file>themes/default/mIndicatorFilter.svg</file>
         <file>themes/default/mLayoutItem.svg</file>
         <file>themes/default/mLayoutItemShapeEllipse.svg</file>
@@ -541,6 +548,7 @@
         <file>themes/default/propertyicons/join.svg</file>
         <file>themes/default/propertyicons/labelbackground.svg</file>
         <file>themes/default/propertyicons/labelbuffer.svg</file>
+        <file>themes/default/propertyicons/labelcallout.svg</file>
         <file>themes/default/propertyicons/labelformatting.svg</file>
         <file>themes/default/propertyicons/labelplacement.svg</file>
         <file>themes/default/propertyicons/labels.svg</file>
@@ -587,6 +595,8 @@
         <file>themes/default/labelingSingle.svg</file>
         <file>themes/default/labelingRuleBased.svg</file>
         <file>themes/default/labelingObstacle.svg</file>
+        <file>themes/default/labelingCalloutSimple.svg</file>
+        <file>themes/default/labelingCalloutManhattan.svg</file>
         <file>themes/default/repositoryConnected.svg</file>
         <file>themes/default/repositoryDisabled.svg</file>
         <file>themes/default/repositoryUnavailable.svg</file>
@@ -696,6 +706,7 @@
         <file>themes/default/mActionAddGeoPackageLayer.svg</file>
         <file>themes/default/mActionFindReplace.svg</file>
         <file>icons/qgis_icon.svg</file>
+        <file>icons/qgis-icon-minimal-black.svg</file>
         <file>themes/default/mActionCircle2TangentsPoint.svg</file>
         <file>themes/default/mActionRegularPolygonCenterPoint.svg</file>
         <file>themes/default/3d.svg</file>
@@ -756,8 +767,22 @@
         <file>themes/default/mActionNewVirtualLayer.svg</file>
         <file>themes/default/mActionDoubleArrowRight.svg</file>
         <file>themes/default/mActionDoubleArrowLeft.svg</file>
+        <file>themes/default/mAction3DNavigation.svg</file>
+        <file>themes/default/mActionTiltDown.svg</file>
+        <file>themes/default/mActionTiltUp.svg</file>
         <file>north_arrows/layout_default_north_arrow.svg</file>
         <file>themes/default/mActionDeleteSelectedFeatures.svg</file>
+        <file>themes/default/mIconAlignCenter.svg</file>
+        <file>themes/default/mIconAlignJustify.svg</file>
+        <file>themes/default/mIconAlignLeft.svg</file>
+        <file>themes/default/mIconAlignRight.svg</file>
+        <file>themes/default/mIconArrangeSymbolsLeft.svg</file>
+        <file>themes/default/mIconArrangeSymbolsRight.svg</file>
+        <file>themes/default/mIconClearItem.svg</file>
+        <file>themes/default/mIndicatorLayerError.svg</file>
+        <file>themes/default/mActionShowUnplacedLabel.svg</file>
+        <file>themes/default/mActionHandleStoreFilterExpressionChecked.svg</file>
+        <file>themes/default/mActionHandleStoreFilterExpressionUnchecked.svg</file>
     </qresource>
     <qresource prefix="/images/tips">
         <file alias="symbol_levels.png">qgis_tips/symbol_levels.png</file>

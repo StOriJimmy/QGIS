@@ -20,6 +20,7 @@
 #include "qgsdelimitedtextfile.h"
 #include "qgssettings.h"
 #include "qgsproviderregistry.h"
+#include "qgsgui.h"
 
 #include <QButtonGroup>
 #include <QFile>
@@ -35,16 +36,14 @@ const int MAX_SAMPLE_LENGTH = 200;
 
 QgsDelimitedTextSourceSelect::QgsDelimitedTextSourceSelect( QWidget *parent, Qt::WindowFlags fl, QgsProviderRegistry::WidgetMode theWidgetMode )
   : QgsAbstractDataSourceWidget( parent, fl, theWidgetMode )
-  , mFile( new QgsDelimitedTextFile() )
-  , mPluginKey( QStringLiteral( "/Plugin-DelimitedText" ) )
+  , mFile( qgis::make_unique<QgsDelimitedTextFile>() )
+  , mSettingsKey( QStringLiteral( "/Plugin-DelimitedText" ) )
 {
 
   setupUi( this );
+  QgsGui::instance()->enableAutoGeometryRestore( this );
   setupButtons( buttonBox );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsDelimitedTextSourceSelect::showHelp );
-
-  QgsSettings settings;
-  restoreGeometry( settings.value( mPluginKey + "/geometry" ).toByteArray() );
 
   bgFileFormat = new QButtonGroup( this );
   bgFileFormat->addButton( delimiterCSV, swFileFormat->indexOf( swpCSVOptions ) );
@@ -94,17 +93,11 @@ QgsDelimitedTextSourceSelect::QgsDelimitedTextSourceSelect( QWidget *parent, Qt:
 
   connect( crsGeometry, &QgsProjectionSelectionWidget::crsChanged, this, &QgsDelimitedTextSourceSelect::updateFieldsAndEnable );
 
-  mFileWidget->setDialogTitle( tr( "Choose a Delimited Text File to Open" ) );
-  mFileWidget->setFilter( tr( "Text files" ) + " (*.txt *.csv *.dat *.wkt);;" + tr( "All files" ) + " (* *.*)" );
-  mFileWidget->setSelectedFilter( settings.value( mPluginKey + "/file_filter", "" ).toString() );
-  connect( mFileWidget, &QgsFileWidget::fileChanged, this, [ = ]() { updateFileName(); } );
-}
-
-QgsDelimitedTextSourceSelect::~QgsDelimitedTextSourceSelect()
-{
   QgsSettings settings;
-  settings.setValue( mPluginKey + "/geometry", saveGeometry() );
-  delete mFile;
+  mFileWidget->setDialogTitle( tr( "Choose a Delimited Text File to Open" ) );
+  mFileWidget->setFilter( tr( "Text files" ) + QStringLiteral( " (*.txt *.csv *.dat *.wkt);;" ) + tr( "All files" ) + QStringLiteral( " (* *.*)" ) );
+  mFileWidget->setSelectedFilter( settings.value( mSettingsKey + QStringLiteral( "/file_filter" ), QString() ).toString() );
+  connect( mFileWidget, &QgsFileWidget::fileChanged, this, &QgsDelimitedTextSourceSelect::updateFileName );
 }
 
 void QgsDelimitedTextSourceSelect::addButtonClicked()
@@ -258,7 +251,7 @@ void QgsDelimitedTextSourceSelect::loadSettings( const QString &subkey, bool loa
 
   // at startup, fetch the last used delimiter and directory from
   // settings
-  QString key = mPluginKey;
+  QString key = mSettingsKey;
   if ( ! subkey.isEmpty() ) key.append( '/' ).append( subkey );
 
   // and how to use the delimiter
@@ -319,7 +312,7 @@ void QgsDelimitedTextSourceSelect::loadSettings( const QString &subkey, bool loa
 void QgsDelimitedTextSourceSelect::saveSettings( const QString &subkey, bool saveGeomSettings )
 {
   QgsSettings settings;
-  QString key = mPluginKey;
+  QString key = mSettingsKey;
   if ( ! subkey.isEmpty() ) key.append( '/' ).append( subkey );
   settings.setValue( key + "/encoding", cmbEncoding->currentText() );
   settings.setValue( key + "/geometry", saveGeometry() );
@@ -651,7 +644,7 @@ bool QgsDelimitedTextSourceSelect::trySetXYField( QStringList &fields, QList<boo
 void QgsDelimitedTextSourceSelect::updateFileName()
 {
   QgsSettings settings;
-  settings.setValue( mPluginKey + "/file_filter", mFileWidget->selectedFilter() );
+  settings.setValue( mSettingsKey + "/file_filter", mFileWidget->selectedFilter() );
 
   // put a default layer name in the text entry
   QString filename = mFileWidget->filePath();
@@ -659,7 +652,7 @@ void QgsDelimitedTextSourceSelect::updateFileName()
   if ( finfo.exists() )
   {
     QgsSettings settings;
-    settings.setValue( mPluginKey + "/text_path", finfo.path() );
+    settings.setValue( mSettingsKey + "/text_path", finfo.path() );
   }
 
   txtLayerName->setText( finfo.completeBaseName() );
