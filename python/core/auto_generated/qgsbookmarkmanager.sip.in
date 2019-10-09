@@ -213,6 +213,12 @@ Removes and deletes all bookmarks from the manager.
 Returns a list of all bookmark groups contained in the manager.
 %End
 
+    void renameGroup( const QString &oldName, const QString &newName );
+%Docstring
+Renames an existing group from ``oldName`` to ``newName``. This updates
+all existing bookmarks to reflect the new name.
+%End
+
     QList< QgsBookmark > bookmarks() const;
 %Docstring
 Returns a list of all bookmarks contained in the manager.
@@ -252,9 +258,11 @@ Moves the bookmark with matching ``id`` from this manager to a ``destination`` m
 Returns ``True`` if the bookmark was successfully moved.
 %End
 
-    static bool exportToFile( const QString &path, const QList<const QgsBookmarkManager *> &managers );
+    static bool exportToFile( const QString &path, const QList<const QgsBookmarkManager *> &managers, const QString &group = QString() );
 %Docstring
 Exports all bookmarks from a list of ``managers`` to an xml file at the specified ``path``.
+
+If ``group`` is set then only bookmarks from the matching group will be exported.
 
 Returns ``True`` if the export was successful.
 

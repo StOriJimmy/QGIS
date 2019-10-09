@@ -145,6 +145,7 @@ QgsVectorLayer::QgsVectorLayer( const QString &vectorLayerPath,
                                 const QString &providerKey,
                                 const QgsVectorLayer::LayerOptions &options )
   : QgsMapLayer( QgsMapLayerType::VectorLayer, baseName, vectorLayerPath )
+  , mServerProperties( new QgsVectorLayerServerProperties( this ) )
   , mAuxiliaryLayer( nullptr )
   , mAuxiliaryLayerKey( QString() )
   , mReadExtentFromXml( options.readExtentFromXml )
@@ -157,7 +158,7 @@ QgsVectorLayer::QgsVectorLayer( const QString &vectorLayerPath,
 
   mGeometryOptions = qgis::make_unique<QgsGeometryOptions>();
   mActions = new QgsActionManager( this );
-  mConditionalStyles = new QgsConditionalLayerStyles();
+  mConditionalStyles = new QgsConditionalLayerStyles( this );
   mStoredExpressionManager = new QgsStoredExpressionManager();
   mStoredExpressionManager->setParent( this );
 
@@ -378,6 +379,7 @@ void QgsVectorLayer::drawVertexMarker( double x, double y, QPainter &p, QgsVecto
 void QgsVectorLayer::select( QgsFeatureId fid )
 {
   mSelectedFeatureIds.insert( fid );
+  mPreviousSelectedFeatureIds.clear();
 
   emit selectionChanged( QgsFeatureIds() << fid, QgsFeatureIds(), false );
 }
@@ -385,6 +387,7 @@ void QgsVectorLayer::select( QgsFeatureId fid )
 void QgsVectorLayer::select( const QgsFeatureIds &featureIds )
 {
   mSelectedFeatureIds.unite( featureIds );
+  mPreviousSelectedFeatureIds.clear();
 
   emit selectionChanged( featureIds, QgsFeatureIds(), false );
 }
@@ -392,6 +395,7 @@ void QgsVectorLayer::select( const QgsFeatureIds &featureIds )
 void QgsVectorLayer::deselect( const QgsFeatureId fid )
 {
   mSelectedFeatureIds.remove( fid );
+  mPreviousSelectedFeatureIds.clear();
 
   emit selectionChanged( QgsFeatureIds(), QgsFeatureIds() << fid, false );
 }
@@ -399,6 +403,7 @@ void QgsVectorLayer::deselect( const QgsFeatureId fid )
 void QgsVectorLayer::deselect( const QgsFeatureIds &featureIds )
 {
   mSelectedFeatureIds.subtract( featureIds );
+  mPreviousSelectedFeatureIds.clear();
 
   emit selectionChanged( QgsFeatureIds(), featureIds, false );
 }
@@ -510,6 +515,7 @@ void QgsVectorLayer::selectByIds( const QgsFeatureIds &ids, QgsVectorLayer::Sele
 
   QgsFeatureIds deselectedFeatures = mSelectedFeatureIds - newSelection;
   mSelectedFeatureIds = newSelection;
+  mPreviousSelectedFeatureIds.clear();
 
   emit selectionChanged( newSelection, deselectedFeatures, true );
 }
@@ -524,6 +530,7 @@ void QgsVectorLayer::modifySelection( const QgsFeatureIds &selectIds, const QgsF
 
   mSelectedFeatureIds -= deselectIds;
   mSelectedFeatureIds += selectIds;
+  mPreviousSelectedFeatureIds.clear();
 
   emit selectionChanged( selectIds, deselectIds - intersectingIds, false );
 }
@@ -574,7 +581,17 @@ void QgsVectorLayer::removeSelection()
   if ( mSelectedFeatureIds.isEmpty() )
     return;
 
+  const QgsFeatureIds previous = mSelectedFeatureIds;
   selectByIds( QgsFeatureIds() );
+  mPreviousSelectedFeatureIds = previous;
+}
+
+void QgsVectorLayer::reselect()
+{
+  if ( mPreviousSelectedFeatureIds.isEmpty() || !mSelectedFeatureIds.empty() )
+    return;
+
+  selectByIds( mPreviousSelectedFeatureIds );
 }
 
 QgsVectorDataProvider *QgsVectorLayer::dataProvider()
@@ -1135,7 +1152,24 @@ bool QgsVectorLayer::deleteSelectedFeatures( int *deletedCount )
   return deleted == count;
 }
 
+static const QgsPointSequence vectorPointXY2pointSequence( const QVector<QgsPointXY> &points )
+{
+  QgsPointSequence pts;
+  pts.reserve( points.size() );
+  QVector<const QgsPointXY>::iterator it = points.constBegin();
+  while ( it != points.constEnd() )
+  {
+    pts.append( QgsPoint( *it ) );
+    it++;
+  }
+  return pts;
+}
 QgsGeometry::OperationResult QgsVectorLayer::addRing( const QVector<QgsPointXY> &ring, QgsFeatureId *featureId )
+{
+  return addRing( vectorPointXY2pointSequence( ring ), featureId );
+}
+
+QgsGeometry::OperationResult QgsVectorLayer::addRing( const QgsPointSequence &ring, QgsFeatureId *featureId )
 {
   if ( !mValid || !mEditBuffer || !mDataProvider )
     return QgsGeometry::OperationResult::LayerNotEditable;
@@ -1198,28 +1232,18 @@ QgsGeometry::OperationResult QgsVectorLayer::addRing( QgsCurve *ring, QgsFeature
 
 QgsGeometry::OperationResult QgsVectorLayer::addPart( const QList<QgsPointXY> &points )
 {
-  if ( !mValid || !mEditBuffer || !mDataProvider )
-    return QgsGeometry::OperationResult::LayerNotEditable;
-
-  //number of selected features must be 1
-
-  if ( mSelectedFeatureIds.empty() )
+  QgsPointSequence pts;
+  pts.reserve( points.size() );
+  for ( QList<QgsPointXY>::const_iterator it = points.constBegin(); it != points.constEnd() ; ++it )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Number of selected features < 1" ), 3 );
-    return QgsGeometry::OperationResult::SelectionIsEmpty;
+    pts.append( QgsPoint( *it ) );
   }
-  else if ( mSelectedFeatureIds.size() > 1 )
-  {
-    QgsDebugMsgLevel( QStringLiteral( "Number of selected features > 1" ), 3 );
-    return QgsGeometry::OperationResult::SelectionIsGreaterThanOne;
-  }
+  return addPart( pts );
+}
 
-  QgsVectorLayerEditUtils utils( this );
-  QgsGeometry::OperationResult result = utils.addPart( points, *mSelectedFeatureIds.constBegin() );
-
-  if ( result == QgsGeometry::OperationResult::Success )
-    updateExtents();
-  return result;
+QgsGeometry::OperationResult QgsVectorLayer::addPart( const QVector<QgsPointXY> &points )
+{
+  return addPart( vectorPointXY2pointSequence( points ) );
 }
 
 QgsGeometry::OperationResult QgsVectorLayer::addPart( const QgsPointSequence &points )
@@ -1289,14 +1313,22 @@ int QgsVectorLayer::translateFeature( QgsFeatureId featureId, double dx, double 
 
 QgsGeometry::OperationResult QgsVectorLayer::splitParts( const QVector<QgsPointXY> &splitLine, bool topologicalEditing )
 {
+  return splitParts( vectorPointXY2pointSequence( splitLine ), topologicalEditing );
+}
+QgsGeometry::OperationResult QgsVectorLayer::splitParts( const QgsPointSequence &splitLine, bool topologicalEditing )
+{
   if ( !mValid || !mEditBuffer || !mDataProvider )
     return QgsGeometry::OperationResult::LayerNotEditable;
 
   QgsVectorLayerEditUtils utils( this );
   return utils.splitParts( splitLine, topologicalEditing );
 }
-
 QgsGeometry::OperationResult QgsVectorLayer::splitFeatures( const QVector<QgsPointXY> &splitLine, bool topologicalEditing )
+{
+  return splitFeatures( vectorPointXY2pointSequence( splitLine ), topologicalEditing );
+}
+
+QgsGeometry::OperationResult QgsVectorLayer::splitFeatures( const QgsPointSequence &splitLine, bool topologicalEditing )
 {
   if ( !mValid || !mEditBuffer || !mDataProvider )
     return QgsGeometry::OperationResult::LayerNotEditable;
@@ -1520,6 +1552,9 @@ bool QgsVectorLayer::readXml( const QDomNode &layer_node, QgsReadWriteContext &c
   {
     mAuxiliaryLayerKey = asElem.attribute( QStringLiteral( "key" ) );
   }
+
+  // QGIS Server WMS Dimensions
+  mServerProperties->readXml( layer_node );
 
   return mValid;               // should be true if read successfully
 
@@ -1806,6 +1841,9 @@ bool QgsVectorLayer::writeXml( QDomNode &layer_node,
     asElem.setAttribute( QStringLiteral( "key" ), pkField );
   }
   layer_node.appendChild( asElem );
+
+  // save QGIS Server WMS Dimension definitions
+  mServerProperties->writeXml( layer_node, document );
 
   // renderer specific settings
   QString errorMsg;
@@ -3852,6 +3890,16 @@ QStringList QgsVectorLayer::uniqueStringsMatching( int index, const QString &sub
 
 QVariant QgsVectorLayer::minimumValue( int index ) const
 {
+  return minimumOrMaximumValue( index, true );
+}
+
+QVariant QgsVectorLayer::maximumValue( int index ) const
+{
+  return minimumOrMaximumValue( index, false );
+}
+
+QVariant QgsVectorLayer::minimumOrMaximumValue( int index, bool minimum ) const
+{
   if ( !mDataProvider )
   {
     return QVariant();
@@ -3866,7 +3914,7 @@ QVariant QgsVectorLayer::minimumValue( int index ) const
 
     case QgsFields::OriginProvider: //a provider field
     {
-      QVariant min = mDataProvider->minimumValue( index );
+      QVariant val = minimum ? mDataProvider->minimumValue( index ) : mDataProvider->maximumValue( index );
       if ( mEditBuffer )
       {
         QgsFeatureMap added = mEditBuffer->addedFeatures();
@@ -3875,9 +3923,10 @@ QVariant QgsVectorLayer::minimumValue( int index ) const
         {
           addedIt.next();
           QVariant v = addedIt.value().attribute( index );
-          if ( v.isValid() && qgsVariantLessThan( v, min ) )
+          if ( ( v.isValid() && minimum && qgsVariantLessThan( v, val ) )
+               || ( v.isValid() && !minimum && qgsVariantGreaterThan( v, val ) ) )
           {
-            min = v;
+            val = v;
           }
         }
 
@@ -3886,24 +3935,25 @@ QVariant QgsVectorLayer::minimumValue( int index ) const
         {
           it.next();
           QVariant v = it.value().value( index );
-          if ( v.isValid() && qgsVariantLessThan( v, min ) )
+          if ( ( v.isValid() && minimum && qgsVariantLessThan( v, val ) )
+               || ( v.isValid() && !minimum && qgsVariantGreaterThan( v, val ) ) )
           {
-            min = v;
+            val = v;
           }
         }
       }
-      return min;
+      return val;
     }
 
     case QgsFields::OriginEdit:
     {
       // the layer is editable, but in certain cases it can still be avoided going through all features
       if ( mEditBuffer->mDeletedFeatureIds.isEmpty() &&
-           mEditBuffer->mAddedFeatures.isEmpty() && !
-           mEditBuffer->mDeletedAttributeIds.contains( index ) &&
+           mEditBuffer->mAddedFeatures.isEmpty() &&
+           !mEditBuffer->mDeletedAttributeIds.contains( index ) &&
            mEditBuffer->mChangedAttributeValues.isEmpty() )
       {
-        return mDataProvider->minimumValue( index );
+        return minimum ? mDataProvider->minimumValue( index ) : mDataProvider->maximumValue( index );
       }
     }
     FALLTHROUGH
@@ -3920,106 +3970,21 @@ QVariant QgsVectorLayer::minimumValue( int index ) const
                                             .setSubsetOfAttributes( attList ) );
 
       QgsFeature f;
-      double minimumValue = std::numeric_limits<double>::max();
+      double value = minimum ? std::numeric_limits<double>::max() : -std::numeric_limits<double>::max();
       double currentValue = 0;
       while ( fit.nextFeature( f ) )
       {
         currentValue = f.attribute( index ).toDouble();
-        if ( currentValue < minimumValue )
+        if ( ( minimum && currentValue < value ) || ( !minimum && currentValue > value ) )
         {
-          minimumValue = currentValue;
+          value = currentValue;
         }
       }
-      return QVariant( minimumValue );
+      return QVariant( value );
     }
   }
 
-  Q_ASSERT_X( false, "QgsVectorLayer::minimumValue()", "Unknown source of the field!" );
-  return QVariant();
-}
-
-QVariant QgsVectorLayer::maximumValue( int index ) const
-{
-  if ( !mDataProvider )
-  {
-    return QVariant();
-  }
-
-  QgsFields::FieldOrigin origin = mFields.fieldOrigin( index );
-  switch ( origin )
-  {
-    case QgsFields::OriginUnknown:
-      return QVariant();
-
-    case QgsFields::OriginProvider: //a provider field
-    {
-      QVariant min = mDataProvider->maximumValue( index );
-      if ( mEditBuffer )
-      {
-        QgsFeatureMap added = mEditBuffer->addedFeatures();
-        QMapIterator< QgsFeatureId, QgsFeature > addedIt( added );
-        while ( addedIt.hasNext() )
-        {
-          addedIt.next();
-          QVariant v = addedIt.value().attribute( index );
-          if ( v.isValid() && qgsVariantGreaterThan( v, min ) )
-          {
-            min = v;
-          }
-        }
-
-        QMapIterator< QgsFeatureId, QgsAttributeMap > it( mEditBuffer->changedAttributeValues() );
-        while ( it.hasNext() )
-        {
-          it.next();
-          QVariant v = it.value().value( index );
-          if ( v.isValid() && qgsVariantGreaterThan( v, min ) )
-          {
-            min = v;
-          }
-        }
-      }
-      return min;
-    }
-
-    case QgsFields::OriginEdit:
-      // the layer is editable, but in certain cases it can still be avoided going through all features
-      if ( mEditBuffer->mDeletedFeatureIds.isEmpty() &&
-           mEditBuffer->mAddedFeatures.isEmpty() &&
-           !mEditBuffer->mDeletedAttributeIds.contains( index ) &&
-           mEditBuffer->mChangedAttributeValues.isEmpty() )
-      {
-        return mDataProvider->maximumValue( index );
-      }
-
-      FALLTHROUGH
-    //no choice but to go through each feature
-    case QgsFields::OriginJoin:
-    case QgsFields::OriginExpression:
-    {
-      QgsAttributeList attList;
-      attList << index;
-
-      QgsFeatureIterator fit = getFeatures( QgsFeatureRequest()
-                                            .setFlags( QgsFeatureRequest::NoGeometry )
-                                            .setSubsetOfAttributes( attList ) );
-
-      QgsFeature f;
-      double maximumValue = -std::numeric_limits<double>::max();
-      double currentValue = 0;
-      while ( fit.nextFeature( f ) )
-      {
-        currentValue = f.attribute( index ).toDouble();
-        if ( currentValue > maximumValue )
-        {
-          maximumValue = currentValue;
-        }
-      }
-      return QVariant( maximumValue );
-    }
-  }
-
-  Q_ASSERT_X( false, "QgsVectorLayer::maximumValue()", "Unknown source of the field!" );
+  Q_ASSERT_X( false, "QgsVectorLayer::minOrMax()", "Unknown source of the field!" );
   return QVariant();
 }
 

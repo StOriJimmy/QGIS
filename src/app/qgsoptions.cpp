@@ -150,6 +150,12 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   // non-default themes are best rendered using the Fusion style, therefore changing themes must require a restart to
   lblUITheme->setText( QStringLiteral( "%1 <i>(%2)</i>" ).arg( lblUITheme->text(), tr( "QGIS restart required" ) ) );
 
+  mEnableMacrosComboBox->addItem( tr( "Never" ), QVariant::fromValue( Qgis::PythonMacroMode::Never ) );
+  mEnableMacrosComboBox->addItem( tr( "Ask" ), QVariant::fromValue( Qgis::PythonMacroMode::Ask ) );
+  mEnableMacrosComboBox->addItem( tr( "For this session only" ), QVariant::fromValue( Qgis::PythonMacroMode::SessionOnly ) );
+  mEnableMacrosComboBox->addItem( tr( "Not during this session" ), QVariant::fromValue( Qgis::PythonMacroMode::NotForThisSession ) );
+  mEnableMacrosComboBox->addItem( tr( "Always (not recommended)" ), QVariant::fromValue( Qgis::PythonMacroMode::Always ) );
+
   mIdentifyHighlightColorButton->setColorDialogTitle( tr( "Identify Highlight Color" ) );
   mIdentifyHighlightColorButton->setAllowOpacity( true );
   mIdentifyHighlightColorButton->setContext( QStringLiteral( "gui" ) );
@@ -759,7 +765,8 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   chbAskToSaveProjectChanges->setChecked( mSettings->value( QStringLiteral( "qgis/askToSaveProjectChanges" ), QVariant( true ) ).toBool() );
   mLayerDeleteConfirmationChkBx->setChecked( mSettings->value( QStringLiteral( "qgis/askToDeleteLayers" ), true ).toBool() );
   chbWarnOldProjectVersion->setChecked( mSettings->value( QStringLiteral( "/qgis/warnOldProjectVersion" ), QVariant( true ) ).toBool() );
-  cmbEnableMacros->setCurrentIndex( mSettings->value( QStringLiteral( "/qgis/enableMacros" ), 1 ).toInt() );
+  Qgis::PythonMacroMode pyMacroMode = mSettings->enumValue( QStringLiteral( "/qgis/enableMacros" ), Qgis::PythonMacroMode::Ask );
+  mEnableMacrosComboBox->setCurrentIndex( mEnableMacrosComboBox->findData( QVariant::fromValue( pyMacroMode ) ) );
 
   // templates
   cbxProjectDefaultNew->setChecked( mSettings->value( QStringLiteral( "/qgis/newProjectDefault" ), QVariant( false ) ).toBool() );
@@ -1524,7 +1531,7 @@ void QgsOptions::saveOptions()
     mSettings->setValue( QStringLiteral( "/qgis/projectTemplateDir" ), leTemplateFolder->text() );
     QgisApp::instance()->updateProjectFromTemplates();
   }
-  mSettings->setValue( QStringLiteral( "/qgis/enableMacros" ), cmbEnableMacros->currentIndex() );
+  mSettings->setEnumValue( QStringLiteral( "/qgis/enableMacros" ), mEnableMacrosComboBox->currentData().value<Qgis::PythonMacroMode>() );
 
   QgsApplication::setNullRepresentation( leNullValue->text() );
   mSettings->setValue( QStringLiteral( "/qgis/style" ), cmbStyle->currentText() );
@@ -2187,7 +2194,9 @@ void QgsOptions::optionsStackedWidget_CurrentChanged( int index )
 
 void QgsOptions::loadGdalDriverList()
 {
-  QStringList mySkippedDrivers = QgsApplication::skippedGdalDrivers();
+  QgsApplication::registerGdalDriversFromSettings();
+
+  const QStringList mySkippedDrivers = QgsApplication::skippedGdalDrivers();
   GDALDriverH myGdalDriver; // current driver
   QString myGdalDriverDescription;
   QStringList myDrivers;
@@ -2249,8 +2258,8 @@ void QgsOptions::loadGdalDriverList()
     myDriversLongName[myGdalDriverDescription] = QString( GDALGetMetadataItem( myGdalDriver, "DMD_LONGNAME", "" ) );
 
   }
-  // restore GDAL_SKIP just in case
-  CPLSetConfigOption( "GDAL_SKIP", mySkippedDrivers.join( QStringLiteral( " " ) ).toUtf8() );
+  // restore active drivers
+  QgsApplication::applyGdalSkippedDrivers();
 
   myDrivers.removeDuplicates();
   // myDrivers.sort();
@@ -2304,19 +2313,38 @@ void QgsOptions::loadGdalDriverList()
 
 void QgsOptions::saveGdalDriverList()
 {
+  bool driverUnregisterNeeded = false;
+  const auto oldSkippedGdalDrivers = QgsApplication::skippedGdalDrivers();
+  auto deferredSkippedGdalDrivers = QgsApplication::deferredSkippedGdalDrivers();
+  QStringList skippedGdalDrivers;
   for ( int i = 0; i < lstGdalDrivers->topLevelItemCount(); i++ )
   {
     QTreeWidgetItem *mypItem = lstGdalDrivers->topLevelItem( i );
+    const auto &driverName( mypItem->text( 0 ) );
     if ( mypItem->checkState( 0 ) == Qt::Unchecked )
     {
-      QgsApplication::skipGdalDriver( mypItem->text( 0 ) );
+      skippedGdalDrivers << driverName;
+      if ( !deferredSkippedGdalDrivers.contains( driverName ) &&
+           !oldSkippedGdalDrivers.contains( driverName ) )
+      {
+        deferredSkippedGdalDrivers << driverName;
+        driverUnregisterNeeded = true;
+      }
     }
     else
     {
-      QgsApplication::restoreGdalDriver( mypItem->text( 0 ) );
+      if ( deferredSkippedGdalDrivers.contains( driverName ) )
+      {
+        deferredSkippedGdalDrivers.removeAll( driverName );
+      }
     }
   }
-  mSettings->setValue( QStringLiteral( "gdal/skipList" ), QgsApplication::skippedGdalDrivers().join( QStringLiteral( " " ) ) );
+  if ( driverUnregisterNeeded )
+  {
+    QMessageBox::information( this, tr( "Drivers Disabled" ),
+                              tr( "One or more drivers have been disabled. This will only take effect after QGIS is restarted." ) );
+  }
+  QgsApplication::setSkippedGdalDrivers( skippedGdalDrivers, deferredSkippedGdalDrivers );
 }
 
 void QgsOptions::addScale()

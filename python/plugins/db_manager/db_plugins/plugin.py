@@ -457,6 +457,12 @@ class Database(DbItemObject):
                 parent.infoBar.pushMessage(QApplication.translate("DBManagerPlugin", "Select a table to edit."),
                                            Qgis.Info, parent.iface.messageTimeout())
                 return
+
+            if isinstance(item, RasterTable):
+                parent.infoBar.pushMessage(QApplication.translate("DBManagerPlugin", "Editing of raster tables is not supported."),
+                                           Qgis.Info, parent.iface.messageTimeout())
+                return
+
             from ..dlg_table_properties import DlgTableProperties
 
             DlgTableProperties(item, parent).exec_()
@@ -1173,7 +1179,6 @@ class TableField(TableSubItemObject):
         if self.default2String() == new_default_str:
             new_default_str = None
         if self.comment == new_comment:
-            # Update also a new_comment
             new_comment = None
         ret = self.table().database().connector.updateTableColumn((self.table().schemaName(), self.table().name),
                                                                   self.name, new_name, new_type_str,

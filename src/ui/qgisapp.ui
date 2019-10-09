@@ -144,6 +144,7 @@
     <addaction name="mActionMapTips"/>
     <addaction name="mActionNewBookmark"/>
     <addaction name="mActionShowBookmarks"/>
+    <addaction name="mActionShowBookmarkManager"/>
     <addaction name="mActionDraw"/>
     <addaction name="separator"/>
     <addaction name="mActionShowAllLayers"/>
@@ -233,11 +234,17 @@
     <property name="title">
      <string>&amp;Help</string>
     </property>
+    <widget class="QMenu" name="mMenuPluginHelp">
+     <property name="title">
+      <string>Plugins</string>
+     </property>
+    </widget>
     <addaction name="mActionHelpContents"/>
     <addaction name="mActionHelpAPI"/>
     <addaction name="separator"/>
-    <addaction name="mActionReportaBug"/>
+    <addaction name="mMenuPluginHelp"/>
     <addaction name="separator"/>
+    <addaction name="mActionReportaBug"/>
     <addaction name="mActionNeedSupport"/>
     <addaction name="separator"/>
     <addaction name="mActionQgisHomePage"/>
@@ -285,6 +292,7 @@
      <addaction name="mActionSelectByForm"/>
      <addaction name="mActionSelectByExpression"/>
      <addaction name="mActionDeselectAll"/>
+     <addaction name="mActionReselect"/>
      <addaction name="mActionSelectAll"/>
      <addaction name="mActionInvertSelection"/>
     </widget>
@@ -1372,13 +1380,25 @@
      <normaloff>:/images/themes/default/mActionNewBookmark.svg</normaloff>:/images/themes/default/mActionNewBookmark.svg</iconset>
    </property>
    <property name="text">
-    <string>New Bookmark…</string>
+    <string>New Spatial Bookmark…</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+B</string>
    </property>
   </action>
   <action name="mActionShowBookmarks">
+   <property name="icon">
+    <iconset resource="../../images/images.qrc">
+     <normaloff>:/images/themes/default/mActionShowBookmarks.svg</normaloff>:/images/themes/default/mActionShowBookmarks.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Show Spatial Bookmarks</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+B</string>
+   </property>
+  </action>
+  <action name="mActionShowBookmarkManager">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -1387,10 +1407,7 @@
      <normaloff>:/images/themes/default/mActionShowBookmarks.svg</normaloff>:/images/themes/default/mActionShowBookmarks.svg</iconset>
    </property>
    <property name="text">
-    <string>Show Bookmarks</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Shift+B</string>
+    <string>Show Spatial Bookmark Manager</string>
    </property>
   </action>
   <action name="mActionDraw">
@@ -1867,7 +1884,7 @@
      <normaloff>:/images/themes/default/mActionHelpSponsors.png</normaloff>:/images/themes/default/mActionHelpSponsors.png</iconset>
    </property>
    <property name="text">
-    <string>QGIS Sponsors</string>
+    <string>QGIS Sustaining Members</string>
    </property>
   </action>
   <action name="mActionMoveLabel">
@@ -2719,7 +2736,7 @@ Acts on the currently active layer only.</string>
   </action>
   <action name="mActionReportaBug">
    <property name="text">
-    <string>Report an issue</string>
+    <string>Report an Issue</string>
    </property>
   </action>
   <action name="mActionDiagramProperties">
@@ -3229,6 +3246,14 @@ Acts on the currently active layer only.</string>
    <property name="toolTip">
     <string>Toggles Display of Unplaced Labels
 Shows placeholders for labels which could not be placed, e.g. due to overlaps with other map labels.</string>
+   </property>
+  </action>
+  <action name="mActionReselect">
+   <property name="text">
+    <string>Reselect Features</string>
+   </property>
+   <property name="toolTip">
+    <string>Reselect Features from Current Layer</string>
    </property>
   </action>
  </widget>

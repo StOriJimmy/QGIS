@@ -29,6 +29,7 @@
 #include "qgsgui.h"
 #include "qgsattributeformeditorwidget.h"
 #include "qgsattributeforminterface.h"
+#include "qgsmultiedittoolbutton.h"
 
 class TestQgsAttributeForm : public QObject
 {
@@ -620,6 +621,25 @@ void TestQgsAttributeForm::testEditableJoin()
   ft0C = layerC->getFeature( 1 );
   QCOMPARE( ft0C.attribute( "col0" ), QVariant( 13 ) );
 
+  // all editor widget must have a multi edit button
+  layerA->startEditing();
+  layerB->startEditing();
+  layerC->startEditing();
+  layerA->select( ftA.id() );
+  form.setMode( QgsAttributeEditorContext::MultiEditMode );
+
+  // multi edit button must be displayed for A
+  QgsAttributeFormEditorWidget *formWidget = qobject_cast<QgsAttributeFormEditorWidget *>( form.mFormWidgets[1] );
+  QVERIFY( formWidget->mMultiEditButton->parent() );
+
+  // multi edit button must be displayed for B (join is editable)
+  formWidget = qobject_cast<QgsAttributeFormEditorWidget *>( form.mFormWidgets[1] );
+  QVERIFY( formWidget->mMultiEditButton->parent() );
+
+  // multi edit button must not be displayed for C (join is not editable)
+  formWidget = qobject_cast<QgsAttributeFormEditorWidget *>( form.mFormWidgets[2] );
+  QVERIFY( !formWidget->mMultiEditButton->parent() );
+
   // clean
   delete layerA;
   delete layerB;
@@ -925,6 +945,8 @@ void TestQgsAttributeForm::testDefaultValueUpdate()
   layer->setDefaultValueDefinition( 2, QgsDefaultValue( QStringLiteral( "\"col0\"+\"col1\"" ) ) );
   layer->setDefaultValueDefinition( 3, QgsDefaultValue( QStringLiteral( "\"col2\"" ) ) );
 
+  layer->startEditing();
+
   // build a form for this feature
   QgsFeature ft( layer->dataProvider()->fields(), 1 );
   ft.setAttribute( QStringLiteral( "col0" ), 0 );
@@ -985,6 +1007,8 @@ void TestQgsAttributeForm::testDefaultValueUpdateRecursion()
   layer->setDefaultValueDefinition( 1, QgsDefaultValue( QStringLiteral( "\"col0\"+1" ) ) );
   layer->setDefaultValueDefinition( 2, QgsDefaultValue( QStringLiteral( "\"col1\"+1" ) ) );
   layer->setDefaultValueDefinition( 3, QgsDefaultValue( QStringLiteral( "\"col2\"+1" ) ) );
+
+  layer->startEditing();
 
   // build a form for this feature
   QgsFeature ft( layer->dataProvider()->fields(), 1 );

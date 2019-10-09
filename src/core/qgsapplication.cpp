@@ -57,6 +57,7 @@
 #include "qgsvaliditycheckregistry.h"
 #include "qgsnewsfeedparser.h"
 #include "qgsbookmarkmanager.h"
+#include "qgsstylemodel.h"
 
 #include "gps/qgsgpsconnectionregistry.h"
 #include "processing/qgsprocessingregistry.h"
@@ -127,6 +128,7 @@ QString ABISYM( QgsApplication::mCfgIntDir );
 #endif
 QString ABISYM( QgsApplication::mBuildOutputPath );
 QStringList ABISYM( QgsApplication::mGdalSkipList );
+QStringList QgsApplication::sDeferredSkippedGdalDrivers;
 int ABISYM( QgsApplication::mMaxThreads );
 QString ABISYM( QgsApplication::mAuthDbDirPath );
 
@@ -338,6 +340,7 @@ void QgsApplication::init( QString profileFolder )
   colorSchemeRegistry()->initStyleScheme();
 
   bookmarkManager()->initialize( QgsApplication::qgisSettingsDirPath() + "/bookmarks.xml" );
+  members()->mStyleModel = new QgsStyleModel( QgsStyle::defaultStyle() );
 
   ABISYM( mInitialized ) = true;
 }
@@ -349,15 +352,20 @@ QgsApplication::~QgsApplication()
   delete mQgisTranslator;
   delete mQtTranslator;
 
-  // invalidate coordinate cache while the PROJ context held by the thread-locale
-  // QgsProjContextStore object is still alive. Otherwise if this later object
-  // is destroyed before the static variables of the cache, we might use freed memory.
-
   // we do this here as well as in exitQgis() -- it's safe to call as often as we want,
   // and there's just a *chance* that someone hasn't properly called exitQgis prior to
   // this destructor...
+  invalidateCaches();
+}
+
+void QgsApplication::invalidateCaches()
+{
+  // invalidate coordinate cache while the PROJ context held by the thread-locale
+  // QgsProjContextStore object is still alive. Otherwise if this later object
+  // is destroyed before the static variables of the cache, we might use freed memory.
   QgsCoordinateTransform::invalidateCache( true );
   QgsCoordinateReferenceSystem::invalidateCache( true );
+  QgsEllipsoidUtils::invalidateCache( true );
 }
 
 QgsApplication *QgsApplication::instance()
@@ -1242,6 +1250,9 @@ QgsAuthManager *QgsApplication::authManager()
 
 void QgsApplication::exitQgis()
 {
+  // make sure all threads are done before exiting
+  QThreadPool::globalInstance()->waitForDone();
+
   // don't create to delete
   if ( instance() )
     delete instance()->mAuthManager;
@@ -1262,11 +1273,7 @@ void QgsApplication::exitQgis()
   if ( QgsProviderRegistry::exists() )
     delete QgsProviderRegistry::instance();
 
-  // invalidate coordinate cache AND DISABLE THEM! while the PROJ context held by the thread-locale
-  // QgsProjContextStore object is still alive. Otherwise if this later object
-  // is destroyed before the static variables of the cache, we might use freed memory.
-  QgsCoordinateTransform::invalidateCache( true );
-  QgsCoordinateReferenceSystem::invalidateCache( true );
+  invalidateCaches();
 
   QgsStyle::cleanDefaultStyle();
 
@@ -1549,10 +1556,41 @@ void QgsApplication::restoreGdalDriver( const QString &driver )
   applyGdalSkippedDrivers();
 }
 
+void QgsApplication::setSkippedGdalDrivers( const QStringList &skippedGdalDrivers,
+    const QStringList &deferredSkippedGdalDrivers )
+{
+  ABISYM( mGdalSkipList ) = skippedGdalDrivers;
+  sDeferredSkippedGdalDrivers = deferredSkippedGdalDrivers;
+
+  QgsSettings settings;
+  settings.setValue( QStringLiteral( "gdal/skipList" ), skippedGdalDrivers.join( QStringLiteral( " " ) ) );
+
+  applyGdalSkippedDrivers();
+}
+
+void QgsApplication::registerGdalDriversFromSettings()
+{
+  QgsSettings settings;
+  QString joinedList = settings.value( QStringLiteral( "gdal/skipList" ), QString() ).toString();
+  QStringList myList;
+  if ( !joinedList.isEmpty() )
+  {
+    myList = joinedList.split( ' ' );
+  }
+  ABISYM( mGdalSkipList ) = myList;
+  applyGdalSkippedDrivers();
+}
+
 void QgsApplication::applyGdalSkippedDrivers()
 {
   ABISYM( mGdalSkipList ).removeDuplicates();
-  QString myDriverList = ABISYM( mGdalSkipList ).join( QStringLiteral( " " ) );
+  QStringList realDisabledDriverList;
+  for ( const auto &driverName : ABISYM( mGdalSkipList ) )
+  {
+    if ( !sDeferredSkippedGdalDrivers.contains( driverName ) )
+      realDisabledDriverList << driverName;
+  }
+  QString myDriverList = realDisabledDriverList.join( ' ' );
   QgsDebugMsg( QStringLiteral( "Gdal Skipped driver list set to:" ) );
   QgsDebugMsg( myDriverList );
   CPLSetConfigOption( "GDAL_SKIP", myDriverList.toUtf8() );
@@ -1936,6 +1974,11 @@ QgsBookmarkManager *QgsApplication::bookmarkManager()
   return members()->mBookmarkManager;
 }
 
+QgsStyleModel *QgsApplication::defaultStyleModel()
+{
+  return members()->mStyleModel;
+}
+
 QgsMessageLog *QgsApplication::messageLog()
 {
   return members()->mMessageLog;
@@ -2005,6 +2048,7 @@ QgsApplication::ApplicationMembers::ApplicationMembers()
 
 QgsApplication::ApplicationMembers::~ApplicationMembers()
 {
+  delete mStyleModel;
   delete mValidityCheckRegistry;
   delete mActionScopeRegistry;
   delete m3DRendererRegistry;

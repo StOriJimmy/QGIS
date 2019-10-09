@@ -660,7 +660,7 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
 
       // if we know both source and output DPI, let's scale the tiles
       if ( mDpi != -1 && mTileLayer->dpi != -1 )
-        vres *= mDpi / mTileLayer->dpi;
+        vres *= static_cast<double>( mDpi ) / mTileLayer->dpi;
 
       // find nearest resolution
       tm = mTileMatrixSet->findNearestResolution( vres );
@@ -3461,6 +3461,15 @@ QgsImageFetcher *QgsWmsProvider::getLegendGraphicFetcher( const QgsMapSettings *
   {
     scale = mapSettings->scale();
     mapExtent = mapSettings->visibleExtent();
+    try
+    {
+      QgsCoordinateTransform ct { mapSettings->destinationCrs(), crs(), mapSettings->transformContext() };
+      mapExtent = ct.transformBoundingBox( mapExtent );
+    }
+    catch ( QgsCsException & )
+    {
+      // Can't reproject
+    }
   }
   else
   {

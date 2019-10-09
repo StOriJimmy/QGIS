@@ -20,6 +20,7 @@
 #include "qgsattributeformrelationeditorwidget.h"
 #include "qgseditorwidgetregistry.h"
 #include "qgsfeatureiterator.h"
+#include "qgsgui.h"
 #include "qgsproject.h"
 #include "qgspythonrunner.h"
 #include "qgsrelationwidgetwrapper.h"
@@ -34,7 +35,6 @@
 #include "qgstabwidget.h"
 #include "qgssettings.h"
 #include "qgsscrollarea.h"
-#include "qgsgui.h"
 #include "qgsvectorlayerjoinbuffer.h"
 #include "qgsvectorlayerutils.h"
 #include "qgsqmlwidgetwrapper.h"
@@ -1712,16 +1712,16 @@ void QgsAttributeForm::initPython()
     switch ( mLayer->editFormConfig().initCodeSource() )
     {
       case QgsEditFormConfig::CodeSourceFile:
-        if ( ! initFilePath.isEmpty() )
+        if ( !initFilePath.isEmpty() )
         {
-          QFile inputFile( initFilePath );
+          QFile *inputFile = QgsApplication::instance()->networkContentFetcherRegistry()->localFile( initFilePath );
 
-          if ( inputFile.open( QFile::ReadOnly ) )
+          if ( inputFile && inputFile->open( QFile::ReadOnly ) )
           {
             // Read it into a string
-            QTextStream inf( &inputFile );
+            QTextStream inf( inputFile );
             initCode = inf.readAll();
-            inputFile.close();
+            inputFile->close();
           }
           else // The file couldn't be opened
           {
@@ -1744,15 +1744,20 @@ void QgsAttributeForm::initPython()
 
       case QgsEditFormConfig::CodeSourceEnvironment:
       case QgsEditFormConfig::CodeSourceNone:
-      default:
         // Nothing to do: the function code should be already in the environment
         break;
     }
 
     // If we have a function code, run it
-    if ( ! initCode.isEmpty() )
+    if ( !initCode.isEmpty() )
     {
-      QgsPythonRunner::run( initCode );
+      if ( QgsGui::pythonMacroAllowed() )
+        QgsPythonRunner::run( initCode );
+      else
+        mMessageBar->pushMessage( QString(),
+                                  tr( "Python macro could not be run due to missing permissions." ),
+                                  Qgis::MessageLevel::Warning,
+                                  messageTimeout() );
     }
 
     QgsPythonRunner::run( QStringLiteral( "import inspect" ) );
@@ -2390,28 +2395,7 @@ void QgsAttributeForm::updateJoinedFields( const QgsEditorWidgetWrapper &eww )
 
 bool QgsAttributeForm::fieldIsEditable( int fieldIndex ) const
 {
-  bool editable = false;
-
-  if ( mLayer->fields().fieldOrigin( fieldIndex ) == QgsFields::OriginJoin )
-  {
-    int srcFieldIndex;
-    const QgsVectorLayerJoinInfo *info = mLayer->joinBuffer()->joinForFieldIndex( fieldIndex, mLayer->fields(), srcFieldIndex );
-
-    if ( info && !info->hasUpsertOnEdit() && mMode == QgsAttributeEditorContext::AddFeatureMode )
-      editable = false;
-    else if ( info && info->isEditable() && info->joinLayer()->isEditable() )
-      editable = fieldIsEditable( *( info->joinLayer() ), srcFieldIndex, mFeature.id() );
-  }
-  else
-    editable = fieldIsEditable( *mLayer, fieldIndex, mFeature.id() );
-
-  return editable;
-}
-
-bool QgsAttributeForm::fieldIsEditable( const QgsVectorLayer &layer, int fieldIndex,  QgsFeatureId fid ) const
-{
-  return !layer.editFormConfig().readOnly( fieldIndex ) &&
-         ( ( layer.dataProvider() && layer.dataProvider()->capabilities() & QgsVectorDataProvider::ChangeAttributeValues ) || FID_IS_NEW( fid ) );
+  return QgsVectorLayerUtils::fieldIsEditable( mLayer, fieldIndex, mFeature );
 }
 
 void QgsAttributeForm::updateIcon( QgsEditorWidgetWrapper *eww )

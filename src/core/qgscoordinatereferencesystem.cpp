@@ -271,18 +271,29 @@ bool QgsCoordinateReferenceSystem::createFromString( const QString &definition )
   locker.unlock();
 
   bool result = false;
-  QRegularExpression reCrsId( "^(epsg|postgis|internal|user)\\:(\\d+)$", QRegularExpression::CaseInsensitiveOption );
+  QRegularExpression reCrsId( QStringLiteral( "^(epsg|esri|osgeo|ignf|zangi|iau2000|postgis|internal|user)\\:(\\w+)$" ), QRegularExpression::CaseInsensitiveOption );
   QRegularExpressionMatch match = reCrsId.match( definition );
   if ( match.capturedStart() == 0 )
   {
     QString authName = match.captured( 1 ).toLower();
-    CrsType type = InternalCrsId;
     if ( authName == QLatin1String( "epsg" ) )
-      type = EpsgCrsId;
-    if ( authName == QLatin1String( "postgis" ) )
-      type = PostgisCrsId;
-    long id = match.captured( 2 ).toLong();
-    result = createFromId( id, type );
+    {
+      result = createFromOgcWmsCrs( definition );
+    }
+    else if ( authName == QLatin1String( "postgis" ) )
+    {
+      const long id = match.captured( 2 ).toLong();
+      result = createFromId( id, PostgisCrsId );
+    }
+    else if ( authName == QLatin1String( "esri" ) || authName == QLatin1String( "osgeo" ) || authName == QLatin1String( "ignf" ) || authName == QLatin1String( "zangi" ) || authName == QLatin1String( "iau2000" ) )
+    {
+      result = createFromOgcWmsCrs( definition );
+    }
+    else
+    {
+      const long id = match.captured( 2 ).toLong();
+      result = createFromId( id, InternalCrsId );
+    }
   }
   else
   {
@@ -1453,8 +1464,10 @@ void QgsCoordinateReferenceSystem::setProj4String( const QString &proj4String )
 
   if ( !d->mPj )
   {
+#ifdef QGISDEBUG
     const int errNo = proj_context_errno( ctx );
     QgsDebugMsg( QStringLiteral( "proj string rejected: %1" ).arg( proj_errno_string( errNo ) ) );
+#endif
     d->mIsValid = false;
   }
   else
@@ -2441,6 +2454,9 @@ bool QgsCoordinateReferenceSystem::loadIds( QHash<int, QString> &wkts )
 #if PROJ_VERSION_MAJOR>=6
 static void sync_db_proj_logger( void * /* user_data */, int level, const char *message )
 {
+#ifndef QGISDEBUG
+  Q_UNUSED( message )
+#endif
   if ( level == PJ_LOG_ERROR )
   {
     QgsDebugMsgLevel( QStringLiteral( "PROJ: %1" ).arg( message ), 2 );

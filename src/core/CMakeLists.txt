@@ -317,6 +317,7 @@ SET(QGIS_CORE_SRCS
   qgspluginlayerregistry.cpp
   qgspointxy.cpp
   qgspointlocator.cpp
+  qgspointlocatorinittask.cpp
   qgsproject.cpp
   qgsprojectbadlayerhandler.cpp
   qgsprojectfiletransform.cpp
@@ -394,6 +395,7 @@ SET(QGIS_CORE_SRCS
   qgsvectorlayerundopassthroughcommand.cpp
   qgsvectorlayerutils.cpp
   qgsvectorsimplifymethod.cpp
+  qgsvectorlayerserverproperties.cpp
   qgsvirtuallayerdefinition.cpp
   qgsvirtuallayerdefinitionutils.cpp
   qgsmapthemecollection.cpp
@@ -567,6 +569,7 @@ SET(QGIS_CORE_SRCS
   3d/qgs3drendererregistry.cpp
   3d/qgsabstract3drenderer.cpp
 
+  fieldformatter/qgscheckboxfieldformatter.cpp
   fieldformatter/qgsrangefieldformatter.cpp
   fieldformatter/qgsdatetimefieldformatter.cpp
   fieldformatter/qgsfallbackfieldformatter.cpp
@@ -645,6 +648,7 @@ ELSE(NOT MSVC)
 ENDIF(NOT MSVC)
 
 SET(QGIS_CORE_MOC_HDRS
+  qgis.h
   qgsabstractcontentcache.h
   qgsabstractdatabaseproviderconnection.h
   qgsapplication.h
@@ -657,6 +661,7 @@ SET(QGIS_CORE_MOC_HDRS
   qgsbookmarkmodel.h
   qgsbrowsermodel.h
   qgsbrowserproxymodel.h
+  qgsconditionalstyle.h
   qgscoordinatereferencesystem.h
   qgscoordinateutils.h
   qgscredentials.h
@@ -708,6 +713,7 @@ SET(QGIS_CORE_MOC_HDRS
   qgspluginlayer.h
   qgspointxy.h
   qgspointlocator.h
+  qgspointlocatorinittask.h
   qgsproject.h
   qgsproxyprogresstask.h
   qgsrelationmanager.h
@@ -736,6 +742,7 @@ SET(QGIS_CORE_MOC_HDRS
   qgsvectorlayerrenderer.h
   qgsvectorlayertools.h
   qgsvectorsimplifymethod.h
+  qgsvectorlayerserverproperties.h
   qgsmapthemecollection.h
   qgswebpage.h
   qgswebview.h
@@ -903,7 +910,6 @@ SET(QGIS_CORE_HDRS
 
   qgstessellator.h
 
-  qgis.h
   qgis_sip.h
   qgsabstractgeopdfexporter.h
   qgsabstractproviderconnection.h
@@ -926,7 +932,6 @@ SET(QGIS_CORE_HDRS
   qgscolorscheme.h
   qgscolorschemeregistry.h
   qgsconnectionpool.h
-  qgsconditionalstyle.h
   qgscoordinateformatter.h
   qgscoordinatetransform.h
   qgscoordinatetransformcontext.h
@@ -1286,6 +1291,7 @@ SET(QGIS_CORE_HDRS
   3d/qgs3drendererregistry.h
   3d/qgsabstract3drenderer.h
 
+  fieldformatter/qgscheckboxfieldformatter.h
   fieldformatter/qgsrangefieldformatter.h
   fieldformatter/qgsdatetimefieldformatter.h
   fieldformatter/qgsfallbackfieldformatter.h

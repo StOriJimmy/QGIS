@@ -181,8 +181,16 @@ QgsLayoutMapWidget::QgsLayoutMapWidget( QgsLayoutItemMap *item )
   loadOverviewEntries();
 
   connect( mMapRotationSpinBox, static_cast < void ( QgsDoubleSpinBox::* )( double ) > ( &QgsDoubleSpinBox::valueChanged ), this, &QgsLayoutMapWidget::rotationChanged );
+  connect( mMapItem, &QgsLayoutItemMap::extentChanged, mItemPropertiesWidget, &QgsLayoutItemPropertiesWidget::updateVariables );
+  connect( mMapItem, &QgsLayoutItemMap::mapRotationChanged, mItemPropertiesWidget, &QgsLayoutItemPropertiesWidget::updateVariables );
 
   blockAllSignals( false );
+}
+
+void QgsLayoutMapWidget::setMasterLayout( QgsMasterLayoutInterface *masterLayout )
+{
+  if ( mItemPropertiesWidget )
+    mItemPropertiesWidget->setMasterLayout( masterLayout );
 }
 
 void QgsLayoutMapWidget::setReportTypeString( const QString &string )
@@ -205,6 +213,8 @@ bool QgsLayoutMapWidget::setNewItem( QgsLayoutItem *item )
   if ( mMapItem )
   {
     disconnect( mMapItem, &QgsLayoutObject::changed, this, &QgsLayoutMapWidget::updateGuiElements );
+    disconnect( mMapItem, &QgsLayoutItemMap::extentChanged, mItemPropertiesWidget, &QgsLayoutItemPropertiesWidget::updateVariables );
+    disconnect( mMapItem, &QgsLayoutItemMap::mapRotationChanged, mItemPropertiesWidget, &QgsLayoutItemPropertiesWidget::updateVariables );
   }
 
   mMapItem = qobject_cast< QgsLayoutItemMap * >( item );
@@ -215,6 +225,8 @@ bool QgsLayoutMapWidget::setNewItem( QgsLayoutItem *item )
   if ( mMapItem )
   {
     connect( mMapItem, &QgsLayoutObject::changed, this, &QgsLayoutMapWidget::updateGuiElements );
+    connect( mMapItem, &QgsLayoutItemMap::extentChanged, mItemPropertiesWidget, &QgsLayoutItemPropertiesWidget::updateVariables );
+    connect( mMapItem, &QgsLayoutItemMap::mapRotationChanged, mItemPropertiesWidget, &QgsLayoutItemPropertiesWidget::updateVariables );
     mOverviewFrameStyleButton->registerExpressionContextGenerator( mMapItem );
   }
 
@@ -1033,8 +1045,8 @@ void QgsLayoutMapWidget::atlasLayerChanged( QgsVectorLayer *layer )
 bool QgsLayoutMapWidget::hasPredefinedScales() const
 {
   // first look at project's scales
-  QStringList scales( QgsProject::instance()->readListEntry( QStringLiteral( "Scales" ), QStringLiteral( "/ScalesList" ) ) );
-  bool hasProjectScales( QgsProject::instance()->readBoolEntry( QStringLiteral( "Scales" ), QStringLiteral( "/useProjectScales" ) ) );
+  const QVector< double > scales( QgsProject::instance()->mapScales() );
+  bool hasProjectScales( QgsProject::instance()->useProjectScales() );
   if ( !hasProjectScales || scales.isEmpty() )
   {
     // default to global map tool scales
@@ -1142,16 +1154,9 @@ QgsLayoutItemMapGrid *QgsLayoutMapWidget::currentGrid()
   return mMapItem->grids()->grid( item->data( Qt::UserRole ).toString() );
 }
 
-void QgsLayoutMapWidget::mGridListWidget_currentItemChanged( QListWidgetItem *current, QListWidgetItem *previous )
+void QgsLayoutMapWidget::mGridListWidget_currentItemChanged( QListWidgetItem *current, QListWidgetItem * )
 {
-  Q_UNUSED( previous )
-  if ( !current )
-  {
-    mGridPropertiesButton->setEnabled( false );
-    return;
-  }
-
-  mGridPropertiesButton->setEnabled( currentGrid()->enabled() );
+  mGridPropertiesButton->setEnabled( static_cast< bool >( current ) );
 }
 
 void QgsLayoutMapWidget::mGridListWidget_itemChanged( QListWidgetItem *item )
@@ -1501,14 +1506,7 @@ void QgsLayoutMapWidget::mOverviewCheckBox_toggled( bool state )
   }
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Overview Display Toggled" ) );
-  if ( state )
-  {
-    overview->setEnabled( true );
-  }
-  else
-  {
-    overview->setEnabled( false );
-  }
+  overview->setEnabled( state );
   mMapItem->invalidateCache();
   mMapItem->layout()->undoStack()->endCommand();
 }

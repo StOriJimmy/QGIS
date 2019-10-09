@@ -486,6 +486,8 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
   spinPrecision->setMinimum( QgsClassificationMethod::MIN_PRECISION );
   spinPrecision->setMaximum( QgsClassificationMethod::MAX_PRECISION );
 
+  spinGraduatedClasses->setShowClearButton( false );
+
   btnColorRamp->setShowRandomColorRamp( true );
 
   // set project default color ramp
@@ -510,17 +512,31 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
 
   methodComboBox->blockSignals( true );
   methodComboBox->addItem( tr( "Color" ), ColorMode );
-  if ( mGraduatedSymbol->type() == QgsSymbol::Marker )
+  switch ( mGraduatedSymbol->type() )
   {
-    methodComboBox->addItem( tr( "Size" ), SizeMode );
-    minSizeSpinBox->setValue( 1 );
-    maxSizeSpinBox->setValue( 8 );
-  }
-  else if ( mGraduatedSymbol->type() == QgsSymbol::Line )
-  {
-    methodComboBox->addItem( tr( "Size" ), SizeMode );
-    minSizeSpinBox->setValue( .1 );
-    maxSizeSpinBox->setValue( 2 );
+    case QgsSymbol::Marker:
+    {
+      methodComboBox->addItem( tr( "Size" ), SizeMode );
+      minSizeSpinBox->setValue( 1 );
+      maxSizeSpinBox->setValue( 8 );
+      break;
+    }
+    case QgsSymbol::Line:
+    {
+      methodComboBox->addItem( tr( "Size" ), SizeMode );
+      minSizeSpinBox->setValue( .1 );
+      maxSizeSpinBox->setValue( 2 );
+      break;
+    }
+    case QgsSymbol::Fill:
+    {
+      //set button and label invisible to avoid display of a single item combobox
+      methodComboBox->hide();
+      labelMethod->hide();
+      break;
+    }
+    case QgsSymbol::Hybrid:
+      break;
   }
   methodComboBox->blockSignals( false );
 
@@ -568,7 +584,8 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
 
 void QgsGraduatedSymbolRendererWidget::mSizeUnitWidget_changed()
 {
-  if ( !mGraduatedSymbol ) return;
+  if ( !mGraduatedSymbol )
+    return;
   mGraduatedSymbol->setOutputUnit( mSizeUnitWidget->unit() );
   mGraduatedSymbol->setMapUnitScale( mSizeUnitWidget->getMapUnitScale() );
   mRenderer->updateSymbols( mGraduatedSymbol.get() );
@@ -595,14 +612,14 @@ void QgsGraduatedSymbolRendererWidget::setContext( const QgsSymbolWidgetContext 
 // Connect/disconnect event handlers which trigger updating renderer
 void QgsGraduatedSymbolRendererWidget::connectUpdateHandlers()
 {
-  connect( spinGraduatedClasses, static_cast < void ( QSpinBox::* )( int ) > ( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
-  connect( cboGraduatedMode, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
+  connect( spinGraduatedClasses, qgis::overload<int>::of( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
+  connect( cboGraduatedMode, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
   connect( btnColorRamp, &QgsColorRampButton::colorRampChanged, this, &QgsGraduatedSymbolRendererWidget::reapplyColorRamp );
-  connect( spinPrecision, static_cast < void ( QSpinBox::* )( int ) > ( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
+  connect( spinPrecision, qgis::overload<int>::of( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   connect( cbxTrimTrailingZeroes, &QAbstractButton::toggled, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   connect( txtLegendFormat, &QLineEdit::textChanged, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
-  connect( minSizeSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
-  connect( maxSizeSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
+  connect( minSizeSpinBox, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
+  connect( maxSizeSpinBox, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
 
   connect( mModel, &QgsGraduatedSymbolRendererModel::rowsMoved, this, &QgsGraduatedSymbolRendererWidget::rowsMoved );
   connect( mModel, &QAbstractItemModel::dataChanged, this, &QgsGraduatedSymbolRendererWidget::modelDataChanged );
@@ -616,14 +633,14 @@ void QgsGraduatedSymbolRendererWidget::connectUpdateHandlers()
 // Connect/disconnect event handlers which trigger updating renderer
 void QgsGraduatedSymbolRendererWidget::disconnectUpdateHandlers()
 {
-  disconnect( spinGraduatedClasses, static_cast < void ( QSpinBox::* )( int ) > ( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
-  disconnect( cboGraduatedMode, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
+  disconnect( spinGraduatedClasses, qgis::overload<int>::of( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
+  disconnect( cboGraduatedMode, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, &QgsGraduatedSymbolRendererWidget::classifyGraduated );
   disconnect( btnColorRamp, &QgsColorRampButton::colorRampChanged, this, &QgsGraduatedSymbolRendererWidget::reapplyColorRamp );
-  disconnect( spinPrecision, static_cast < void ( QSpinBox::* )( int ) > ( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
+  disconnect( spinPrecision, qgis::overload<int>::of( &QSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   disconnect( cbxTrimTrailingZeroes, &QAbstractButton::toggled, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
   disconnect( txtLegendFormat, &QLineEdit::textChanged, this, &QgsGraduatedSymbolRendererWidget::labelFormatChanged );
-  disconnect( minSizeSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
-  disconnect( maxSizeSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
+  disconnect( minSizeSpinBox, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
+  disconnect( maxSizeSpinBox, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsGraduatedSymbolRendererWidget::reapplySizes );
 
   disconnect( mModel, &QgsGraduatedSymbolRendererModel::rowsMoved, this, &QgsGraduatedSymbolRendererWidget::rowsMoved );
   disconnect( mModel, &QAbstractItemModel::dataChanged, this, &QgsGraduatedSymbolRendererWidget::modelDataChanged );
@@ -669,7 +686,9 @@ void QgsGraduatedSymbolRendererWidget::updateUiFromRenderer( bool updateCount )
   // Only update class count if different - otherwise typing value gets very messy
   int nclasses = ranges.count();
   if ( nclasses && updateCount )
+  {
     spinGraduatedClasses->setValue( ranges.count() );
+  }
 
   // set column
   QString attrName = mRenderer->classAttribute();
@@ -698,24 +717,29 @@ void QgsGraduatedSymbolRendererWidget::updateUiFromRenderer( bool updateCount )
 
   // set source color ramp
   methodComboBox->blockSignals( true );
-  if ( mRenderer->graduatedMethod() == QgsGraduatedSymbolRenderer::GraduatedColor )
+  switch ( mRenderer->graduatedMethod() )
   {
-    methodComboBox->setCurrentIndex( methodComboBox->findData( ColorMode ) );
-    if ( mRenderer->sourceColorRamp() )
+    case QgsGraduatedSymbolRenderer::GraduatedColor:
     {
-      btnColorRamp->setColorRamp( mRenderer->sourceColorRamp() );
+      methodComboBox->setCurrentIndex( methodComboBox->findData( ColorMode ) );
+      if ( mRenderer->sourceColorRamp() )
+      {
+        btnColorRamp->setColorRamp( mRenderer->sourceColorRamp() );
+      }
+      break;
+    }
+    case QgsGraduatedSymbolRenderer::GraduatedSize:
+    {
+      methodComboBox->setCurrentIndex( methodComboBox->findData( SizeMode ) );
+      if ( !mRenderer->ranges().isEmpty() ) // avoid overriding default size with zeros
+      {
+        minSizeSpinBox->setValue( mRenderer->minSymbolSize() );
+        maxSizeSpinBox->setValue( mRenderer->maxSymbolSize() );
+      }
+      break;
     }
   }
-  else
-  {
-    methodComboBox->setCurrentIndex( methodComboBox->findData( SizeMode ) );
-    if ( !mRenderer->ranges().isEmpty() ) // avoid overriding default size with zeros
-    {
-      minSizeSpinBox->setValue( mRenderer->minSymbolSize() );
-      maxSizeSpinBox->setValue( mRenderer->maxSymbolSize() );
-    }
-  }
-  toggleMethodWidgets( methodComboBox->currentIndex() );
+  toggleMethodWidgets( static_cast< MethodMode>( methodComboBox->currentData().toInt() ) );
   methodComboBox->blockSignals( false );
 
   viewGraduated->resizeColumnToContents( 0 );
@@ -733,58 +757,71 @@ void QgsGraduatedSymbolRendererWidget::graduatedColumnChanged( const QString &fi
   mRenderer->setClassAttribute( field );
 }
 
-void QgsGraduatedSymbolRendererWidget::methodComboBox_currentIndexChanged( int idx )
+void QgsGraduatedSymbolRendererWidget::methodComboBox_currentIndexChanged( int )
 {
-  toggleMethodWidgets( idx );
-  if ( idx == 0 )
+  const MethodMode newMethod = static_cast< MethodMode >( methodComboBox->currentData().toInt() );
+  toggleMethodWidgets( newMethod );
+  switch ( newMethod )
   {
-    mRenderer->setGraduatedMethod( QgsGraduatedSymbolRenderer::GraduatedColor );
-    QgsColorRamp *ramp = btnColorRamp->colorRamp();
-
-    if ( !ramp )
+    case ColorMode:
     {
-      QMessageBox::critical( this, tr( "Select Method" ), tr( "No color ramp defined." ) );
-      return;
-    }
-    mRenderer->setSourceColorRamp( ramp );
-    reapplyColorRamp();
-  }
-  else
-  {
-    lblColorRamp->setVisible( false );
-    btnColorRamp->setVisible( false );
-    lblSize->setVisible( true );
-    minSizeSpinBox->setVisible( true );
-    lblSize->setVisible( true );
-    maxSizeSpinBox->setVisible( true );
-    mSizeUnitWidget->setVisible( true );
+      mRenderer->setGraduatedMethod( QgsGraduatedSymbolRenderer::GraduatedColor );
+      QgsColorRamp *ramp = btnColorRamp->colorRamp();
 
-    mRenderer->setGraduatedMethod( QgsGraduatedSymbolRenderer::GraduatedSize );
-    reapplySizes();
+      if ( !ramp )
+      {
+        QMessageBox::critical( this, tr( "Select Method" ), tr( "No color ramp defined." ) );
+        return;
+      }
+      mRenderer->setSourceColorRamp( ramp );
+      reapplyColorRamp();
+      break;
+    }
+
+    case SizeMode:
+    {
+      lblColorRamp->setVisible( false );
+      btnColorRamp->setVisible( false );
+      lblSize->setVisible( true );
+      minSizeSpinBox->setVisible( true );
+      lblSize->setVisible( true );
+      maxSizeSpinBox->setVisible( true );
+      mSizeUnitWidget->setVisible( true );
+
+      mRenderer->setGraduatedMethod( QgsGraduatedSymbolRenderer::GraduatedSize );
+      reapplySizes();
+      break;
+    }
   }
 }
 
-void QgsGraduatedSymbolRendererWidget::toggleMethodWidgets( int idx )
+void QgsGraduatedSymbolRendererWidget::toggleMethodWidgets( MethodMode mode )
 {
-  if ( idx == 0 )
+  switch ( mode )
   {
-    lblColorRamp->setVisible( true );
-    btnColorRamp->setVisible( true );
-    lblSize->setVisible( false );
-    minSizeSpinBox->setVisible( false );
-    lblSizeTo->setVisible( false );
-    maxSizeSpinBox->setVisible( false );
-    mSizeUnitWidget->setVisible( false );
-  }
-  else
-  {
-    lblColorRamp->setVisible( false );
-    btnColorRamp->setVisible( false );
-    lblSize->setVisible( true );
-    minSizeSpinBox->setVisible( true );
-    lblSizeTo->setVisible( true );
-    maxSizeSpinBox->setVisible( true );
-    mSizeUnitWidget->setVisible( true );
+    case ColorMode:
+    {
+      lblColorRamp->setVisible( true );
+      btnColorRamp->setVisible( true );
+      lblSize->setVisible( false );
+      minSizeSpinBox->setVisible( false );
+      lblSizeTo->setVisible( false );
+      maxSizeSpinBox->setVisible( false );
+      mSizeUnitWidget->setVisible( false );
+      break;
+    }
+
+    case SizeMode:
+    {
+      lblColorRamp->setVisible( false );
+      btnColorRamp->setVisible( false );
+      lblSize->setVisible( true );
+      minSizeSpinBox->setVisible( true );
+      lblSizeTo->setVisible( true );
+      maxSizeSpinBox->setVisible( true );
+      mSizeUnitWidget->setVisible( true );
+      break;
+    }
   }
 }
 
@@ -873,15 +910,10 @@ void QgsGraduatedSymbolRendererWidget::symmetryPointEditingFinished( )
 
 void QgsGraduatedSymbolRendererWidget::classifyGraduated()
 {
+
+  QgsTemporaryCursorOverride override( Qt::WaitCursor );
   QString attrName = mExpressionWidget->currentField();
   int nclasses = spinGraduatedClasses->value();
-
-  std::unique_ptr<QgsColorRamp> ramp( btnColorRamp->colorRamp() );
-  if ( !ramp )
-  {
-    QMessageBox::critical( this, tr( "Apply Classification" ), tr( "No color ramp defined." ) );
-    return;
-  }
 
   const QString methodId = cboGraduatedMode->currentData().toString();
   QgsClassificationMethod *method = QgsApplication::classificationMethodRegistry()->method( methodId );
@@ -922,11 +954,14 @@ void QgsGraduatedSymbolRendererWidget::classifyGraduated()
   if ( method && method->codeComplexity() > 1 && mLayer->featureCount() > 50000 )
   {
     if ( QMessageBox::Cancel == QMessageBox::question( this, tr( "Apply Classification" ), tr( "Natural break classification (Jenks) is O(n2) complexity, your classification may take a long time.\nPress cancel to abort breaks calculation or OK to continue." ), QMessageBox::Cancel, QMessageBox::Ok ) )
+    {
       return;
+    }
   }
 
   if ( methodComboBox->currentData() == ColorMode )
   {
+    std::unique_ptr<QgsColorRamp> ramp( btnColorRamp->colorRamp() );
     if ( !ramp )
     {
       QMessageBox::critical( this, tr( "Apply Classification" ), tr( "No color ramp defined." ) );
@@ -939,15 +974,12 @@ void QgsGraduatedSymbolRendererWidget::classifyGraduated()
     mRenderer->setSourceColorRamp( nullptr );
   }
 
-  QApplication::setOverrideCursor( Qt::WaitCursor );
-
   mRenderer->updateClasses( mLayer, nclasses );
 
   if ( methodComboBox->currentData() == SizeMode )
     mRenderer->setSymbolSizes( minSizeSpinBox->value(), maxSizeSpinBox->value() );
 
   mRenderer->calculateLabelPrecision();
-  QApplication::restoreOverrideCursor();
   // PrettyBreaks and StdDev calculation don't generate exact
   // number of classes - leave user interface unchanged for these
   updateUiFromRenderer( false );
@@ -1107,6 +1139,8 @@ void QgsGraduatedSymbolRendererWidget::addClass()
 {
   mModel->addClass( mGraduatedSymbol.get() );
   mHistogramWidget->refresh();
+  emit widgetChanged();
+
 }
 
 void QgsGraduatedSymbolRendererWidget::deleteClasses()
@@ -1114,12 +1148,14 @@ void QgsGraduatedSymbolRendererWidget::deleteClasses()
   QList<int> classIndexes = selectedClasses();
   mModel->deleteRows( classIndexes );
   mHistogramWidget->refresh();
+  emit widgetChanged();
 }
 
 void QgsGraduatedSymbolRendererWidget::deleteAllClasses()
 {
   mModel->removeAllRows();
   mHistogramWidget->refresh();
+  emit widgetChanged();
 }
 
 bool QgsGraduatedSymbolRendererWidget::rowsOrdered()

@@ -93,10 +93,24 @@ void QgsGeoPackageItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu
 
     // Add table to existing DB
     QAction *actionAddTable = new QAction( tr( "Create a New Layer or Table…" ), collectionItem->parent() );
-    QVariantMap data;
-    data.insert( QStringLiteral( "item" ), QVariant::fromValue( QPointer< QgsGeoPackageCollectionItem >( collectionItem ) ) );
-    actionAddTable->setData( data );
-    connect( actionAddTable, &QAction::triggered, this, &QgsGeoPackageItemGuiProvider::addTable );
+    QPointer<QgsGeoPackageCollectionItem>collectionItemPtr { collectionItem };
+    connect( actionAddTable, &QAction::triggered, [ collectionItemPtr ]
+    {
+      if ( collectionItemPtr )
+      {
+        QgsNewGeoPackageLayerDialog dialog( nullptr );
+        dialog.setDatabasePath( collectionItemPtr->path() );
+        dialog.setCrs( QgsProject::instance()->defaultCrsForNewLayers() );
+        dialog.setOverwriteBehavior( QgsNewGeoPackageLayerDialog::AddNewLayer );
+        dialog.lockDatabasePath();
+        if ( dialog.exec() == QDialog::Accepted )
+        {
+          if ( collectionItemPtr )
+            collectionItemPtr->refreshConnections();
+        }
+      }
+    } );
+
     menu->addAction( actionAddTable );
 
     QAction *sep = new QAction( collectionItem->parent() );
@@ -171,25 +185,6 @@ void QgsGeoPackageItemGuiProvider::deleteGpkg()
   }
 }
 
-void QgsGeoPackageItemGuiProvider::addTable()
-{
-  QAction *s = qobject_cast<QAction *>( sender() );
-  QVariantMap data = s->data().toMap();
-  QPointer< QgsGeoPackageCollectionItem > item = data[QStringLiteral( "item" )].value<QPointer< QgsGeoPackageCollectionItem >>();
-  if ( item )
-  {
-    QgsNewGeoPackageLayerDialog dialog( nullptr );
-    dialog.setDatabasePath( item->path() );
-    dialog.setCrs( QgsProject::instance()->defaultCrsForNewLayers() );
-    dialog.setOverwriteBehavior( QgsNewGeoPackageLayerDialog::AddNewLayer );
-    dialog.lockDatabasePath();
-    if ( dialog.exec() == QDialog::Accepted )
-    {
-      item->refreshConnections();
-    }
-  }
-}
-
 bool QgsGeoPackageItemGuiProvider::rename( QgsDataItem *item, const QString &newName, QgsDataItemGuiContext )
 {
   if ( QgsGeoPackageVectorLayerItem *layerItem = qobject_cast< QgsGeoPackageVectorLayerItem * >( item ) )
@@ -239,15 +234,14 @@ bool QgsGeoPackageItemGuiProvider::rename( QgsDataItem *item, const QString &new
 
       // Actually rename
       QgsProviderMetadata *md { QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "ogr" ) ) };
-      QgsGeoPackageProviderConnection *conn { static_cast<QgsGeoPackageProviderConnection *>( md->findConnection( layerItem->collection()->name() ) ) };
-      if ( ! conn )
+      std::unique_ptr<QgsGeoPackageProviderConnection> conn( static_cast<QgsGeoPackageProviderConnection *>( md->createConnection( layerItem->collection()->path(), QVariantMap() ) ) );
+      QString oldName = parts.value( QStringLiteral( "layerName" ) ).toString();
+      if ( ! conn->tableExists( QString(), oldName ) )
       {
         errCause = QObject::tr( "There was an error retrieving the connection %1!" ).arg( layerItem->collection()->name() );
       }
       else
       {
-        // TODO: maybe an index?
-        QString oldName = parts.value( QStringLiteral( "layerName" ) ).toString();
         try
         {
           conn->renameVectorTable( QString(), oldName, newName );
@@ -359,9 +353,9 @@ bool QgsGeoPackageItemGuiProvider::deleteLayer( QgsLayerItem *layerItem, QgsData
 
 void QgsGeoPackageItemGuiProvider::vacuumGeoPackageDbAction( const QString &path, const QString &name )
 {
-  Q_UNUSED( path );
+  Q_UNUSED( path )
   QString errCause;
-  bool result = QgsGeoPackageCollectionItem::vacuumGeoPackageDb( name, errCause );
+  bool result = QgsGeoPackageCollectionItem::vacuumGeoPackageDb( name, path, errCause );
   if ( !result || !errCause.isEmpty() )
   {
     QMessageBox::warning( nullptr, tr( "Database compact (VACUUM)" ), errCause );

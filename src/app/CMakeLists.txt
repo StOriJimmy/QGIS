@@ -21,6 +21,7 @@ SET(QGIS_APP_SRCS
   qgsaddtaborgroup.cpp
   qgsappscreenshots.cpp
   qgsjoindialog.cpp
+  qgswmsdimensiondialog.cpp
   qgsannotationwidget.cpp
   qgsappsslerrorhandler.cpp
   qgsattributeactiondialog.cpp
@@ -51,6 +52,7 @@ SET(QGIS_APP_SRCS
   qgssourcefieldsproperties.cpp
   qgsattributesformproperties.cpp
   qgsidentifyresultsdialog.cpp
+  qgsinstallgridshiftdialog.cpp
   qgsfeatureaction.cpp
   qgslabelpropertydialog.cpp
   qgslabelengineconfigdialog.cpp
@@ -82,7 +84,6 @@ SET(QGIS_APP_SRCS
   qgswelcomepage.cpp
 
   qgsmaptooladdfeature.cpp
-  qgsmaptooldigitizefeature.cpp
   qgsmaptooladdpart.cpp
   qgsmaptooladdring.cpp
   qgsmaptoolfillring.cpp
@@ -266,6 +267,7 @@ SET (QGIS_APP_MOC_HDRS
   qgsappcoordinateoperationhandlers.h
   qgsappscreenshots.h
   qgsjoindialog.h
+  qgswmsdimensiondialog.h
   qgsaddtaborgroup.h
   qgsannotationwidget.h
   qgsapplayertreeviewmenuprovider.h
@@ -298,6 +300,7 @@ SET (QGIS_APP_MOC_HDRS
   qgsgeometryvalidationmodel.h
   qgshtmlannotationdialog.h
   qgsidentifyresultsdialog.h
+  qgsinstallgridshiftdialog.h
   qgslabelengineconfigdialog.h
   qgslabelingwidget.h
   qgslabelpropertydialog.h
@@ -327,7 +330,6 @@ SET (QGIS_APP_MOC_HDRS
   qgswelcomepage.h
 
   qgsmaptooladdfeature.h
-  qgsmaptooldigitizefeature.h
   qgsmaptoolannotation.h
   qgsmaptoolcircularstringradius.h
   qgsmaptooladdpart.h

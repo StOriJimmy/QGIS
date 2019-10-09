@@ -104,6 +104,7 @@ SET(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmsimplify.cpp
   processing/qgsalgorithmsmooth.cpp
   processing/qgsalgorithmsnaptogrid.cpp
+  processing/qgsalgorithmsplitfeaturesbyattributecharacter.cpp
   processing/qgsalgorithmsplitlineantimeridian.cpp
   processing/qgsalgorithmsplitlinesbylength.cpp
   processing/qgsalgorithmsplitwithlines.cpp
@@ -145,7 +146,6 @@ SET(QGIS_ANALYSIS_SRCS
   raster/qgsrastercalcnode.cpp
   raster/qgsrastercalculator.cpp
   raster/qgsrastermatrix.cpp
-  vector/mersenne-twister.cpp
   vector/qgsgeometrysnapper.cpp
   vector/qgsgeometrysnappersinglesource.cpp
   vector/qgszonalstatistics.cpp
@@ -285,7 +285,6 @@ SET(QGIS_ANALYSIS_HDRS
   mesh/qgsmeshcalculator.h
   mesh/qgsmeshcalcutils.h
 
-  vector/mersenne-twister.h
   vector/qgsgeometrysnapper.h
   vector/qgsgeometrysnappersinglesource.h
   vector/qgszonalstatistics.h

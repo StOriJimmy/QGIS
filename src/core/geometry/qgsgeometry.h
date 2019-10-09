@@ -47,6 +47,7 @@ class QgsMapToPixel;
 class QPainter;
 class QgsPolygon;
 class QgsLineString;
+class QgsFeedback;
 
 /**
  * Polyline as represented as a vector of two-dimensional points.
@@ -66,7 +67,7 @@ typedef QVector<QgsPointXY> QgsPolylineXY;
  *
  * \since QGIS 3.0
  */
-typedef QVector<QgsPoint> QgsPolyline;
+typedef QgsPointSequence QgsPolyline;
 
 //! Polygon: first item of the list is outer ring, inner rings (if any) start from second item
 #ifndef SIP_RUN
@@ -880,8 +881,19 @@ class CORE_EXPORT QgsGeometry
      * \param topological TRUE if topological editing is enabled
      * \param[out] topologyTestPoints points that need to be tested for topological completeness in the dataset
      * \returns OperationResult a result code: success or reason of failure
+     * \deprecated in QGIS 3.12 - will be removed in QGIS 4.0. Use the variant which accepts QgsPoint objects instead of QgsPointXY.
      */
-    OperationResult splitGeometry( const QVector<QgsPointXY> &splitLine, QVector<QgsGeometry> &newGeometries SIP_OUT, bool topological, QVector<QgsPointXY> &topologyTestPoints SIP_OUT );
+    Q_DECL_DEPRECATED OperationResult splitGeometry( const QVector<QgsPointXY> &splitLine, QVector<QgsGeometry> &newGeometries SIP_OUT, bool topological, QVector<QgsPointXY> &topologyTestPoints SIP_OUT ) SIP_DEPRECATED;
+
+    /**
+     * Splits this geometry according to a given line.
+     * \param splitLine the line that splits the geometry
+     * \param[out] newGeometries list of new geometries that have been created with the split
+     * \param topological TRUE if topological editing is enabled
+     * \param[out] topologyTestPoints points that need to be tested for topological completeness in the dataset
+     * \returns OperationResult a result code: success or reason of failure
+     */
+    OperationResult splitGeometry( const QgsPointSequence &splitLine, QVector<QgsGeometry> &newGeometries SIP_OUT, bool topological, QgsPointSequence &topologyTestPoints SIP_OUT );
 
     /**
      * Replaces a part of this geometry with another line
@@ -1435,6 +1447,79 @@ class CORE_EXPORT QgsGeometry
 
     //! Returns an extruded version of this geometry.
     QgsGeometry extrude( double x, double y );
+
+#ifndef SIP_RUN
+
+    /**
+     * Returns a list of \a count random points generated inside a (multi)polygon geometry.
+     *
+     * Optionally, a specific random \a seed can be used when generating points. If \a seed
+     * is 0, then a completely random sequence of points will be generated.
+     *
+     * If the source geometry is not a (multi)polygon, an empty list will be returned.
+     *
+     * The \a acceptPoint function is used to filter result candidates. If the function returns
+     * FALSE, then the point will not be accepted and another candidate generated.
+     *
+     * The optional \a feedback argument can be used to provide cancellation support during
+     * the point generation.
+     *
+     * \since QGIS 3.10
+     */
+    QVector< QgsPointXY > randomPointsInPolygon( int count, const std::function< bool( const QgsPointXY & ) > &acceptPoint, unsigned long seed = 0, QgsFeedback *feedback = nullptr );
+
+    /**
+     * Returns a list of \a count random points generated inside a (multi)polygon geometry.
+     *
+     * Optionally, a specific random \a seed can be used when generating points. If \a seed
+     * is 0, then a completely random sequence of points will be generated.
+     *
+     * If the source geometry is not a (multi)polygon, an empty list will be returned.
+     *
+     * The optional \a feedback argument can be used to provide cancellation support during
+     * the point generation.
+     *
+     * \since QGIS 3.10
+     */
+    QVector< QgsPointXY > randomPointsInPolygon( int count, unsigned long seed = 0, QgsFeedback *feedback = nullptr );
+    ///@cond PRIVATE
+#else
+
+    /**
+     * Returns a list of \a count random points generated inside a (multi)polygon geometry.
+     *
+     * Optionally, a specific random \a seed can be used when generating points. If \a seed
+     * is 0, then a completely random sequence of points will be generated.
+     *
+     * This method works only with (multi)polygon geometry types. If the geometry
+     * is not a polygon type, a TypeError will be raised. If the geometry
+     * is null, a ValueError will be raised.
+     *
+     * \since QGIS 3.10
+     */
+    SIP_PYOBJECT randomPointsInPolygon( int count, unsigned long seed = 0 ) SIP_TYPEHINT( QgsPolylineXY );
+    % MethodCode
+    const QgsWkbTypes::GeometryType type = sipCpp->type();
+    if ( sipCpp->isNull() )
+    {
+      PyErr_SetString( PyExc_ValueError, QStringLiteral( "Cannot generate points inside a null geometry." ).toUtf8().constData() );
+      sipIsErr = 1;
+    }
+    else if ( type != QgsWkbTypes::PolygonGeometry )
+    {
+      PyErr_SetString( PyExc_TypeError, QStringLiteral( "Cannot generate points inside a %1 geometry. Only Polygon types are permitted." ).arg( QgsWkbTypes::displayString( sipCpp->wkbType() ) ).toUtf8().constData() );
+      sipIsErr = 1;
+    }
+    else
+    {
+      const sipMappedType *qvector_type = sipFindMappedType( "QVector<QgsPointXY>" );
+      sipRes = sipConvertFromNewType( new QVector< QgsPointXY >( sipCpp->randomPointsInPolygon( a0, a1 ) ), qvector_type, Py_None );
+    }
+    % End
+
+
+#endif
+///@endcond
 
     /**
      * Export the geometry to WKB
@@ -2061,16 +2146,18 @@ class CORE_EXPORT QgsGeometry
      * \param polygon source polygon
      * \returns QgsPolylineXY
      * \see createPolygonFromQPolygonF
+     * \deprecated use QgsGeometry::fromQPolygonF() or QgsLineString::fromQPolygonF() instead.
      */
-    static QgsPolylineXY createPolylineFromQPolygonF( const QPolygonF &polygon ) SIP_FACTORY;
+    Q_DECL_DEPRECATED static QgsPolylineXY createPolylineFromQPolygonF( const QPolygonF &polygon ) SIP_DEPRECATED;
 
     /**
      * Creates a QgsPolygonXYfrom a QPolygonF.
      * \param polygon source polygon
      * \returns QgsPolygon
      * \see createPolylineFromQPolygonF
+     * \deprecated use QgsGeometry::fromQPolygonF() or QgsLineString::fromQPolygonF() instead.
      */
-    static QgsPolygonXY createPolygonFromQPolygonF( const QPolygonF &polygon ) SIP_FACTORY;
+    Q_DECL_DEPRECATED static QgsPolygonXY createPolygonFromQPolygonF( const QPolygonF &polygon ) SIP_DEPRECATED;
 
 #ifndef SIP_RUN
 
