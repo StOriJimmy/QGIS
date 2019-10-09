@@ -90,7 +90,7 @@ class GUI_EXPORT QgsExternalResourceWidget : public QWidget
 
     //! returns if the file widget is visible in the widget
     bool fileWidgetVisible() const;
-    //! Sets the visiblity of the file widget in the layout
+    //! Sets the visibility of the file widget in the layout
     void setFileWidgetVisible( bool visible );
 
     //! returns the type of content used in the document viewer
@@ -146,6 +146,10 @@ class GUI_EXPORT QgsExternalResourceWidget : public QWidget
   signals:
     //! emitteed as soon as the current document changes
     void valueChanged( const QString & );
+
+  protected:
+    // Needed to block events when showing a dialog
+    bool eventFilter( QObject *watched, QEvent *event ) override;
 
   private slots:
     void loadDocument( const QString &path );

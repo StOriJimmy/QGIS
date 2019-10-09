@@ -66,6 +66,9 @@ extern "C"
 #if defined(_MSC_VER) && defined(M_PI_4)
 #undef M_PI_4 //avoid redefinition warning
 #endif
+#if defined(PROJ_VERSION_MAJOR) && PROJ_VERSION_MAJOR>=6
+#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
+#endif
 #include <grass/gprojects.h>
 #include <grass/vector.h>
 #include <grass/raster.h>
@@ -916,7 +919,7 @@ QString QgsGrass::openMapset( const QString &gisdbase,
   QFileInfo info( mapsetPath );
   QString user = info.owner();
 
-  sTmp = QDir::tempPath() + "/grass6-" + user + "-" + QString::number( pid );
+  sTmp = QDir::tempPath() + "/grass-" + user + "-" + QString::number( pid );
   QDir dir( sTmp );
   if ( dir.exists() )
   {

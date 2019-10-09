@@ -22,7 +22,7 @@ The QgsBrowserDockWidget class
 %End
   public:
 
-    explicit QgsBrowserDockWidget( const QString &name, QgsBrowserModel *browserModel, QWidget *parent /TransferThis/ = 0 );
+    explicit QgsBrowserDockWidget( const QString &name, QgsBrowserGuiModel *browserModel, QWidget *parent /TransferThis/ = 0 );
 %Docstring
 Constructor for QgsBrowserDockWidget
 
@@ -121,6 +121,10 @@ Sets filter case sensitivity
     void setFilter();
 %Docstring
 Apply filter to the model
+%End
+    void setActiveIndex( const QModelIndex &index );
+%Docstring
+Sets the selection to ``index`` and expand it
 %End
     void updateProjectHome();
 %Docstring

@@ -90,6 +90,20 @@ GUI.
 .. versionadded:: 3.6
 %End
 
+    static QgsProjectStorageGuiRegistry *projectStorageGuiRegistry() /KeepReference/;
+%Docstring
+Returns the global GUI-related project storage registry
+
+.. versionadded:: 3.10
+%End
+
+    static QgsProviderGuiRegistry *providerGuiRegistry() /KeepReference/;
+%Docstring
+Returns the registry of GUI-related components of data providers
+
+.. versionadded:: 3.10
+%End
+
     static void enableAutoGeometryRestore( QWidget *widget, const QString &key = QString() );
 %Docstring
 Register the widget to allow its position to be automatically saved and restored when open and closed.
@@ -130,6 +144,21 @@ Returns the platform's HIG flags.
 %End
 
     ~QgsGui();
+
+    static QColor sampleColor( QPoint point );
+%Docstring
+Samples the color on screen at the specified global ``point`` (pixel).
+
+.. versionadded:: 3.10
+%End
+
+    static QScreen *findScreenAt( QPoint point );
+%Docstring
+Returns the screen at the given global ``point`` (pixel).
+
+.. versionadded:: 3.10
+%End
+
 
   private:
     QgsGui( const QgsGui &other );

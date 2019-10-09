@@ -183,7 +183,7 @@ bool QgsPostgresProjectStorage::writeProject( const QString &uri, QIODevice *dev
                  QgsPostgresConn::quotedValue( projectUri.projectName ),
                  metadataExpr  // no need to quote: already quoted
                );
-  sql += QString::fromAscii( content.toHex() );
+  sql += QString::fromLatin1( content.toHex() );
   sql += "') ON CONFLICT (name) DO UPDATE SET content = EXCLUDED.content, metadata = EXCLUDED.metadata;";
 
   QgsPostgresResult res( conn->PQexec( sql ) );
@@ -252,36 +252,6 @@ bool QgsPostgresProjectStorage::readProjectStorageMetadata( const QString &uri, 
 
   return ok;
 }
-
-
-#ifdef HAVE_GUI
-
-#include "qgspostgresprojectstoragedialog.h"
-
-QString QgsPostgresProjectStorage::visibleName()
-{
-  return QObject::tr( "PostgreSQL" );
-}
-
-QString QgsPostgresProjectStorage::showLoadGui()
-{
-  QgsPostgresProjectStorageDialog dlg( false );
-  if ( !dlg.exec() )
-    return QString();
-
-  return dlg.currentProjectUri();
-}
-
-QString QgsPostgresProjectStorage::showSaveGui()
-{
-  QgsPostgresProjectStorageDialog dlg( true );
-  if ( !dlg.exec() )
-    return QString();
-
-  return dlg.currentProjectUri();
-}
-
-#endif
 
 
 QString QgsPostgresProjectStorage::encodeUri( const QgsPostgresProjectUri &postUri )

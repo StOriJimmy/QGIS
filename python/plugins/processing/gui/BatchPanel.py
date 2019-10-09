@@ -217,11 +217,15 @@ class BatchPanelFillWidget(QToolButton):
         for k, v in params.items():
             alg_scope.setVariable(k, v, True)
 
+        # add batchCount in the alg scope to be used in the expressions. 0 is only an example value
+        alg_scope.setVariable('row_number', 0, False)
+
         expression_context.appendScope(alg_scope)
 
         # mark the parameter variables as highlighted for discoverability
         highlighted_vars = expression_context.highlightedVariables()
         highlighted_vars.extend(list(params.keys()))
+        highlighted_vars.append('row_number')
         expression_context.setHighlightedVariables(highlighted_vars)
 
         dlg = QgsExpressionBuilderDialog(layer=None, context=context.expressionContext())
@@ -252,6 +256,9 @@ class BatchPanelFillWidget(QToolButton):
 
                 for k, v in params.items():
                     alg_scope.setVariable(k, v, True)
+
+                # add batch row number as evaluable variable in algorithm scope
+                alg_scope.setVariable('row_number', row, False)
 
                 expression_context.appendScope(alg_scope)
 
@@ -566,6 +573,13 @@ class BatchPanel(BASE, WIDGET):
         for param in self.alg.parameterDefinitions():
             if param.flags() & QgsProcessingParameterDefinition.FlagAdvanced:
                 self.tblParameters.setColumnHidden(self.parameter_to_column[param.name()], not checked)
+
+    def valueForParameter(self, row, parameter_name):
+        """
+        Returns the current value for a parameter in a row
+        """
+        wrapper = self.wrappers[row][self.parameter_to_column[parameter_name]]
+        return wrapper.parameterValue()
 
     def parametersForRow(self, row, destinationProject=None, warnOnInvalid=True):
         """

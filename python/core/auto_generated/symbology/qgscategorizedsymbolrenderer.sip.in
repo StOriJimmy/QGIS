@@ -170,6 +170,8 @@ can be added later by calling addCategory().
 
     virtual QgsSymbolList symbols( QgsRenderContext &context ) const;
 
+    virtual bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
+
 
     void updateSymbols( QgsSymbol *sym );
 %Docstring
@@ -334,6 +336,7 @@ the categories' color.
 .. seealso:: :py:func:`sourceColorRamp`
 %End
 
+
     void setSourceSymbol( QgsSymbol *sym /Transfer/ );
 %Docstring
 Sets the source symbol for the renderer, which is the base symbol used for the each categories' symbol before applying
@@ -354,6 +357,7 @@ Returns the source color ramp, from which each categories' color is derived.
 
 .. seealso:: :py:func:`sourceSymbol`
 %End
+
 
     void setSourceColorRamp( QgsColorRamp *ramp /Transfer/ );
 %Docstring

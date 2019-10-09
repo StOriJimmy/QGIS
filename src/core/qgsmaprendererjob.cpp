@@ -37,6 +37,7 @@
 #include "qgsvectorlayerlabeling.h"
 #include "qgssettings.h"
 #include "qgsexpressioncontextutils.h"
+#include "qgsrenderer.h"
 
 ///@cond PRIVATE
 
@@ -218,7 +219,7 @@ bool QgsMapRendererJob::reprojectToLayerExtent( const QgsMapLayer *ml, const Qgs
   return split;
 }
 
-LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEngine *labelingEngine2 )
+LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEngine *labelingEngine2, bool deferredPainterSet )
 {
   LayerRenderJobs layerJobs;
 
@@ -239,13 +240,20 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEn
   {
     QgsMapLayer *ml = li.previous();
 
-    QgsDebugMsgLevel( QStringLiteral( "layer %1:  minscale:%2  maxscale:%3  scaledepvis:%4  blendmode:%5" )
+    QgsDebugMsgLevel( QStringLiteral( "layer %1:  minscale:%2  maxscale:%3  scaledepvis:%4  blendmode:%5 isValid:%6" )
                       .arg( ml->name() )
                       .arg( ml->minimumScale() )
                       .arg( ml->maximumScale() )
                       .arg( ml->hasScaleBasedVisibility() )
                       .arg( ml->blendMode() )
+                      .arg( ml->isValid() )
                       , 3 );
+
+    if ( !ml->isValid() )
+    {
+      QgsDebugMsgLevel( QStringLiteral( "Invalid Layer skipped" ), 3 );
+      continue;
+    }
 
     if ( !ml->isInScaleRange( mSettings.scale() ) ) //|| mOverview )
     {
@@ -254,6 +262,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEn
     }
 
     QgsRectangle r1 = mSettings.visibleExtent(), r2;
+    r1.grow( mSettings.extentBuffer() );
     QgsCoordinateTransform ct;
 
     ct = mSettings.layerTransform( ml );
@@ -286,6 +295,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEn
     job.cached = false;
     job.img = nullptr;
     job.layer = ml;
+    job.layerId = ml->id();
     job.renderingTime = -1;
 
     job.context = QgsRenderContext::fromMapSettings( mSettings );
@@ -324,7 +334,7 @@ LayerRenderJobs QgsMapRendererJob::prepareJobs( QPainter *painter, QgsLabelingEn
     // If we are drawing with an alternative blending mode then we need to render to a separate image
     // before compositing this on the map. This effectively flattens the layer and prevents
     // blending occurring between objects on the layer
-    if ( mCache || !painter || needTemporaryImage( ml ) )
+    if ( mCache || ( !painter && !deferredPainterSet ) || needTemporaryImage( ml ) )
     {
       // Flattened image for drawing when a blending mode is set
       QImage *mypFlattenedImage = new QImage( mSettings.deviceOutputSize(),
@@ -409,8 +419,8 @@ void QgsMapRendererJob::cleanupJobs( LayerRenderJobs &jobs )
 
       if ( mCache && !job.cached && !job.context.renderingStopped() && job.layer )
       {
-        QgsDebugMsgLevel( "caching image for " + ( job.layer ? job.layer->id() : QString() ), 2 );
-        mCache->setCacheImage( job.layer->id(), *job.img, QList< QgsMapLayer * >() << job.layer );
+        QgsDebugMsgLevel( QStringLiteral( "caching image for %1" ).arg( job.layerId ), 2 );
+        mCache->setCacheImage( job.layerId, *job.img, QList< QgsMapLayer * >() << job.layer );
       }
 
       delete job.img;
@@ -440,7 +450,7 @@ void QgsMapRendererJob::cleanupLabelJob( LabelRenderJob &job )
   {
     if ( mCache && !job.cached && !job.context.renderingStopped() )
     {
-      QgsDebugMsg( QStringLiteral( "caching label result image" ) );
+      QgsDebugMsgLevel( QStringLiteral( "caching label result image" ), 2 );
       mCache->setCacheImage( LABEL_CACHE_ID, *job.img, _qgis_listQPointerToRaw( job.participatingLayers ) );
     }
 
@@ -519,7 +529,7 @@ void QgsMapRendererJob::logRenderingTime( const LayerRenderJobs &jobs, const Lab
   QMultiMap<int, QString> elapsed;
   const auto constJobs = jobs;
   for ( const LayerRenderJob &job : constJobs )
-    elapsed.insert( job.renderingTime, job.layer ? job.layer->id() : QString() );
+    elapsed.insert( job.renderingTime, job.layerId );
 
   elapsed.insert( labelJob.renderingTime, tr( "Labeling" ) );
 
@@ -531,6 +541,71 @@ void QgsMapRendererJob::logRenderingTime( const LayerRenderJobs &jobs, const Lab
     QgsMessageLog::logMessage( tr( "%1 ms: %2" ).arg( t ).arg( QStringList( elapsed.values( t ) ).join( QStringLiteral( ", " ) ) ), tr( "Rendering" ) );
   }
   QgsMessageLog::logMessage( QStringLiteral( "---" ), tr( "Rendering" ) );
+}
+
+bool QgsMapRendererJob::needTemporaryImage( QgsMapLayer *ml )
+{
+  switch ( ml->type() )
+  {
+    case QgsMapLayerType::VectorLayer:
+    {
+      QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( ml );
+      if ( vl->renderer() && vl->renderer()->forceRasterRender() )
+      {
+        //raster rendering is forced for this layer
+        return true;
+      }
+      if ( mSettings.testFlag( QgsMapSettings::UseAdvancedEffects ) &&
+           ( ( vl->blendMode() != QPainter::CompositionMode_SourceOver )
+             || ( vl->featureBlendMode() != QPainter::CompositionMode_SourceOver )
+             || ( !qgsDoubleNear( vl->opacity(), 1.0 ) ) ) )
+      {
+        //layer properties require rasterization
+        return true;
+      }
+      break;
+    }
+    case QgsMapLayerType::RasterLayer:
+    {
+      // preview of intermediate raster rendering results requires a temporary output image
+      if ( mSettings.testFlag( QgsMapSettings::RenderPartialOutput ) )
+        return true;
+      break;
+    }
+
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::PluginLayer:
+      break;
+  }
+
+  return false;
+}
+
+void QgsMapRendererJob::drawLabeling( QgsRenderContext &renderContext, QgsLabelingEngine *labelingEngine2, QPainter *painter )
+{
+  QgsDebugMsgLevel( QStringLiteral( "Draw labeling start" ), 5 );
+
+  QTime t;
+  t.start();
+
+  // Reset the composition mode before rendering the labels
+  painter->setCompositionMode( QPainter::CompositionMode_SourceOver );
+
+  renderContext.setPainter( painter );
+
+  if ( labelingEngine2 )
+  {
+    labelingEngine2->run( renderContext );
+  }
+
+  QgsDebugMsgLevel( QStringLiteral( "Draw labeling took (seconds): %1" ).arg( t.elapsed() / 1000. ), 2 );
+}
+
+void QgsMapRendererJob::drawLabeling( const QgsMapSettings &settings, QgsRenderContext &renderContext, QgsLabelingEngine *labelingEngine2, QPainter *painter )
+{
+  Q_UNUSED( settings )
+
+  drawLabeling( renderContext, labelingEngine2, painter );
 }
 
 ///@endcond PRIVATE

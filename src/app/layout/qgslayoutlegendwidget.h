@@ -34,6 +34,7 @@ class QgsLayoutLegendWidget: public QgsLayoutItemBaseWidget, private Ui::QgsLayo
 
   public:
     explicit QgsLayoutLegendWidget( QgsLayoutItemLegend *legend );
+    void setMasterLayout( QgsMasterLayoutInterface *masterLayout ) override;
 
     //! Updates the legend layers and groups
     void updateLegend();
@@ -49,7 +50,6 @@ class QgsLayoutLegendWidget: public QgsLayoutItemBaseWidget, private Ui::QgsLayo
 
     void mWrapCharLineEdit_textChanged( const QString &text );
     void mTitleLineEdit_textChanged( const QString &text );
-    void mTitleAlignCombo_currentIndexChanged( int index );
     void mColumnCountSpinBox_valueChanged( int c );
     void mSplitLayerCheckBox_toggled( bool checked );
     void mEqualColumnWidthCheckBox_toggled( bool checked );
@@ -86,6 +86,7 @@ class QgsLayoutLegendWidget: public QgsLayoutItemBaseWidget, private Ui::QgsLayo
     void resetLayerNodeToDefaults();
     void mUpdateAllPushButton_clicked();
     void mAddGroupToolButton_clicked();
+    void mLayerExpressionButton_clicked();
 
     void mFilterLegendByAtlasCheckBox_toggled( bool checked );
 
@@ -107,6 +108,15 @@ class QgsLayoutLegendWidget: public QgsLayoutItemBaseWidget, private Ui::QgsLayo
     void groupFontChanged();
     void layerFontChanged();
     void itemFontChanged();
+
+    void titleAlignmentChanged();
+    void groupAlignmentChanged();
+    void subgroupAlignmentChanged();
+    void itemAlignmentChanged();
+    void arrangementChanged();
+
+    void spaceBelowSubGroupHeadingChanged( double space );
+    void spaceBelowGroupHeadingChanged( double space );
 
   private:
     QgsLayoutLegendWidget() = delete;

@@ -9,6 +9,7 @@ SET(MDAL_MOC_HDRS
 
 IF (WITH_GUI)
   SET(MDAL_SRCS ${MDAL_SRCS}
+    qgsmdalprovidergui.cpp
     qgsmdalsourceselect.cpp
   )
   SET(MDAL_MOC_HDRS ${MDAL_MOC_HDRS}
@@ -172,6 +173,7 @@ IF (WITH_GUI)
   TARGET_LINK_LIBRARIES (mdalprovider
     qgis_gui
   )
+  ADD_DEPENDENCIES(mdalprovider ui)
 ENDIF (WITH_GUI)
 
 IF (HDF5_FOUND)

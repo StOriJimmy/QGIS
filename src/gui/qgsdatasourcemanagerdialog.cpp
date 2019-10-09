@@ -28,8 +28,9 @@
 #include "qgsmessagelog.h"
 #include "qgsmessagebar.h"
 #include "qgsgui.h"
+#include "qgsbrowserguimodel.h"
 
-QgsDataSourceManagerDialog::QgsDataSourceManagerDialog( QgsBrowserModel *browserModel, QWidget *parent, QgsMapCanvas *canvas, Qt::WindowFlags fl )
+QgsDataSourceManagerDialog::QgsDataSourceManagerDialog( QgsBrowserGuiModel *browserModel, QWidget *parent, QgsMapCanvas *canvas, Qt::WindowFlags fl )
   : QgsOptionsDialogBase( QStringLiteral( "Data Source Manager" ), parent, fl )
   , ui( new Ui::QgsDataSourceManagerDialog )
   , mPreviousRow( -1 )
@@ -103,6 +104,7 @@ void QgsDataSourceManagerDialog::setCurrentPage( int index )
   mPreviousRow = ui->mOptionsStackedWidget->currentIndex();
   ui->mOptionsStackedWidget->setCurrentIndex( index );
   setWindowTitle( tr( "Data Source Manager | %1" ).arg( ui->mOptionsListWidget->currentItem()->text() ) );
+  resizeAlltabs( index );
 }
 
 void QgsDataSourceManagerDialog::setPreviousPage()
@@ -115,6 +117,19 @@ void QgsDataSourceManagerDialog::refresh()
 {
   mBrowserWidget->refresh();
   emit providerDialogsRefreshRequested();
+}
+
+void QgsDataSourceManagerDialog::reset()
+{
+  int pageCount = ui->mOptionsStackedWidget->count();
+  for ( int i = 0; i < pageCount; ++i )
+  {
+    QWidget *widget = ui->mOptionsStackedWidget->widget( i );
+    QgsAbstractDataSourceWidget *dataSourceWidget = qobject_cast<QgsAbstractDataSourceWidget *>( widget );
+    if ( dataSourceWidget )
+      dataSourceWidget->reset();
+  }
+
 }
 
 void QgsDataSourceManagerDialog::rasterLayerAdded( const QString &uri, const QString &baseName, const QString &providerKey )

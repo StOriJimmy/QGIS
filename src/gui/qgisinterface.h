@@ -25,6 +25,7 @@
 #include "qgis_sip.h"
 #include "qgis_gui.h"
 #include "qgscoordinatereferencesystem.h"
+#include "qgslayertreeregistrybridge.h"
 
 class QAction;
 class QDialog;
@@ -42,6 +43,7 @@ class QgsLayoutCustomDropHandler;
 class QgsFeature;
 class QgsLayerTreeMapCanvasBridge;
 class QgsLayerTreeView;
+class QgsLayerTreeGroup;
 class QgsLayout;
 class QgsMasterLayoutInterface;
 class QgsLayoutDesignerInterface;
@@ -58,7 +60,7 @@ class QgsOptionsWidgetFactory;
 class QgsLocatorFilter;
 class QgsStatusBar;
 class QgsMeshLayer;
-class QgsBrowserModel;
+class QgsBrowserGuiModel;
 
 
 /**
@@ -233,6 +235,16 @@ class GUI_EXPORT QgisInterface : public QObject
      * Returns a reference to the main window "Plugin" menu.
      */
     virtual QMenu *pluginMenu() = 0;
+
+    /**
+     * Returns a reference to the main window "Plugin Help" sub-menu.
+     *
+     * Plugins are encouraged to insert help and about actions in this submenu instead of creating
+     * a submenu under the pluginMenu() which solely contains Plugin Help or About actions.
+     *
+     * \since QGIS 3.10
+     */
+    virtual QMenu *pluginHelpMenu() = 0;
 
     /**
      * Returns a reference to the main window "Raster" menu.
@@ -550,6 +562,13 @@ class GUI_EXPORT QgisInterface : public QObject
      * \since QGIS 3.4
      */
     virtual void takeAppScreenShots( const QString &saveDirectory, const int categories = 0 ) {Q_UNUSED( saveDirectory ) Q_UNUSED( categories );}
+
+    /**
+     * Returns the insertion point.
+     * This represents the current layer tree group and index where newly added map layers should be inserted into.
+     * \since QGIS 3.10
+     */
+    virtual QgsLayerTreeRegistryBridge::InsertionPoint layerTreeInsertionPoint() = 0;
 
   public slots: // TODO: do these functions really need to be slots?
 
@@ -951,6 +970,14 @@ class GUI_EXPORT QgisInterface : public QObject
     virtual void preloadForm( const QString &uifile ) = 0;
 
     /**
+     * This will perform a search in the locator bar
+     * by setting the line edit text to \a searchText
+     * and automatically displaying any results.
+     * \since QGIS 3.10
+     */
+    virtual void locatorSearch( const QString &searchText ) = 0;
+
+    /**
      * Registers a locator \a filter for the app's locator bar. Ownership of the filter is transferred to the
      * locator.
      * \warning Plugins which register filters to the locator bar must take care to correctly call
@@ -994,7 +1021,7 @@ class GUI_EXPORT QgisInterface : public QObject
      * creating a new browser model for every use.
      * \since QGIS 3.4
      */
-    virtual QgsBrowserModel *browserModel() = 0;
+    virtual QgsBrowserGuiModel *browserModel() = 0;
 
   signals:
 

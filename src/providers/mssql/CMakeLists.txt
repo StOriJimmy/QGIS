@@ -18,10 +18,13 @@ SET(MSSQL_MOC_HDRS
 
 IF (WITH_GUI)
   SET(MSSQL_SRCS ${MSSQL_SRCS}
+    qgsmssqlprovidergui.cpp
+    qgsmssqldataitemguiprovider.cpp
     qgsmssqlsourceselect.cpp
     qgsmssqlnewconnection.cpp
   )
   SET(MSSQL_MOC_HDRS ${MSSQL_MOC_HDRS}
+    qgsmssqldataitemguiprovider.h
     qgsmssqlsourceselect.h
     qgsmssqlnewconnection.h
   )
@@ -71,6 +74,7 @@ IF (WITH_GUI)
   TARGET_LINK_LIBRARIES (mssqlprovider
     qgis_gui
   )
+  ADD_DEPENDENCIES(mssqlprovider ui)
 ENDIF ()
 
 ########################################################

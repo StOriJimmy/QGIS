@@ -32,6 +32,7 @@
 #include "qgsproviderregistry.h"
 #include "qgsmeshlayer.h"
 #include "qgsreferencedgeometry.h"
+#include "qgsrasterfilewriter.h"
 
 QList<QgsRasterLayer *> QgsProcessingUtils::compatibleRasterLayers( QgsProject *project, bool sort )
 {
@@ -778,7 +779,7 @@ QString QgsProcessingUtils::formatHelpMapAsHtml( const QVariantMap &map, const Q
   return s;
 }
 
-QString QgsProcessingUtils::convertToCompatibleFormat( const QgsVectorLayer *vl, bool selectedFeaturesOnly, const QString &baseName, const QStringList &compatibleFormats, const QString &preferredFormat, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
+QString convertToCompatibleFormatInternal( const QgsVectorLayer *vl, bool selectedFeaturesOnly, const QString &baseName, const QStringList &compatibleFormats, const QString &preferredFormat, QgsProcessingContext &context, QgsProcessingFeedback *feedback, QString *layerName )
 {
   bool requiresTranslation = false;
 
@@ -789,17 +790,21 @@ QString QgsProcessingUtils::convertToCompatibleFormat( const QgsVectorLayer *vl,
   // if the data provider is NOT ogr, then we HAVE to convert. Otherwise we run into
   // issues with data providers like spatialite, delimited text where the format can be
   // opened outside of QGIS, but with potentially very different behavior!
-  requiresTranslation = requiresTranslation || vl->dataProvider()->name() != QLatin1String( "ogr" );
+  requiresTranslation = requiresTranslation || vl->providerType() != QLatin1String( "ogr" );
 
   // if the layer has a feature filter set, then we HAVE to convert. Feature filters are
   // a purely QGIS concept.
   requiresTranslation = requiresTranslation || !vl->subsetString().isEmpty();
 
+  // if the layer opened using GDAL's virtual I/O mechanism (/vsizip/, etc.), then
+  // we HAVE to convert as other tools may not work with it
+  requiresTranslation = requiresTranslation || vl->source().startsWith( QLatin1String( "/vsi" ) );
+
   // Check if layer is a disk based format and if so if the layer's path has a compatible filename suffix
   QString diskPath;
   if ( !requiresTranslation )
   {
-    const QVariantMap parts = QgsProviderRegistry::instance()->decodeUri( vl->dataProvider()->name(), vl->source() );
+    const QVariantMap parts = QgsProviderRegistry::instance()->decodeUri( vl->providerType(), vl->source() );
     if ( parts.contains( QStringLiteral( "path" ) ) )
     {
       diskPath = parts.value( QStringLiteral( "path" ) ).toString();
@@ -808,8 +813,17 @@ QString QgsProcessingUtils::convertToCompatibleFormat( const QgsVectorLayer *vl,
 
       // if the layer name doesn't match the filename, we need to convert the layer. This method can only return
       // a filename, and cannot handle layernames as well as file paths
-      const QString layerName = parts.value( QStringLiteral( "layerName" ) ).toString();
-      requiresTranslation = requiresTranslation || ( !layerName.isEmpty() && layerName != fi.baseName() );
+      const QString srcLayerName = parts.value( QStringLiteral( "layerName" ) ).toString();
+      if ( layerName )
+      {
+        // differing layer names are acceptable
+        *layerName = srcLayerName;
+      }
+      else
+      {
+        // differing layer names are NOT acceptable
+        requiresTranslation = requiresTranslation || ( !srcLayerName.isEmpty() && srcLayerName != fi.baseName() );
+      }
     }
     else
     {
@@ -842,6 +856,17 @@ QString QgsProcessingUtils::convertToCompatibleFormat( const QgsVectorLayer *vl,
   {
     return diskPath;
   }
+}
+
+QString QgsProcessingUtils::convertToCompatibleFormat( const QgsVectorLayer *vl, bool selectedFeaturesOnly, const QString &baseName, const QStringList &compatibleFormats, const QString &preferredFormat, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
+{
+  return convertToCompatibleFormatInternal( vl, selectedFeaturesOnly, baseName, compatibleFormats, preferredFormat, context, feedback, nullptr );
+}
+
+QString QgsProcessingUtils::convertToCompatibleFormatAndLayerName( const QgsVectorLayer *layer, bool selectedFeaturesOnly, const QString &baseName, const QStringList &compatibleFormats, const QString &preferredFormat, QgsProcessingContext &context, QgsProcessingFeedback *feedback, QString &layerName )
+{
+  layerName.clear();
+  return convertToCompatibleFormatInternal( layer, selectedFeaturesOnly, baseName, compatibleFormats, preferredFormat, context, feedback, &layerName );
 }
 
 QgsFields QgsProcessingUtils::combineFields( const QgsFields &fieldsA, const QgsFields &fieldsB, const QString &fieldsBPrefix )
@@ -909,6 +934,24 @@ QgsFields QgsProcessingUtils::indicesToFields( const QList<int> &indices, const 
   for ( int i : indices )
     fieldsSubset.append( fields.at( i ) );
   return fieldsSubset;
+}
+
+QString QgsProcessingUtils::defaultVectorExtension()
+{
+  QgsSettings settings;
+  const int setting = settings.value( QStringLiteral( "Processing/Configuration/DefaultOutputVectorLayerExt" ), -1 ).toInt();
+  if ( setting == -1 )
+    return QStringLiteral( "gpkg" );
+  return QgsVectorFileWriter::supportedFormatExtensions().value( setting, QStringLiteral( "gpkg" ) );
+}
+
+QString QgsProcessingUtils::defaultRasterExtension()
+{
+  QgsSettings settings;
+  const int setting = settings.value( QStringLiteral( "Processing/Configuration/DefaultOutputRasterLayerExt" ), -1 ).toInt();
+  if ( setting == -1 )
+    return QStringLiteral( "tif" );
+  return QgsRasterFileWriter::supportedFormatExtensions().value( setting, QStringLiteral( "tif" ) );
 }
 
 //

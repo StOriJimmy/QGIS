@@ -266,6 +266,8 @@ class CORE_EXPORT QgsProcessingParameterDefinition
       sipType = sipType_QgsProcessingParameterLayout;
     else if ( sipCpp->type() == QgsProcessingParameterLayoutItem::typeName() )
       sipType = sipType_QgsProcessingParameterLayoutItem;
+    else if ( sipCpp->type() == QgsProcessingParameterColor::typeName() )
+      sipType = sipType_QgsProcessingParameterColor;
     else
       sipType = nullptr;
     SIP_END
@@ -791,9 +793,44 @@ class CORE_EXPORT QgsProcessingParameters
      *
      * The \a preferredFormat argument is used to specify to desired file extension to use when a temporary
      * layer export is required. This defaults to shapefiles, because shapefiles are the future (don't believe the geopackage hype!).
+     *
+     * When an algorithm is capable of handling multi-layer input files (such as Geopackage), it is preferable
+     * to use parameterAsCompatibleSourceLayerPathAndLayerName() which may avoid conversion in more situations.
      */
     static QString parameterAsCompatibleSourceLayerPath( const QgsProcessingParameterDefinition *definition, const QVariantMap &parameters,
         QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = nullptr );
+
+    /**
+     * Evaluates the parameter with matching \a definition to a source vector layer file path and layer name of compatible format.
+     *
+     * If the parameter is evaluated to an existing layer, and that layer is not of the format listed in the
+     * \a compatibleFormats argument, then the layer will first be exported to a compatible format
+     * in a temporary location. The function will then return the path to that temporary file.
+     *
+     * \a compatibleFormats should consist entirely of lowercase file extensions, e.g. 'shp'.
+     *
+     * The \a preferredFormat argument is used to specify to desired file extension to use when a temporary
+     * layer export is required. This defaults to shapefiles, because shapefiles are the future (don't believe the geopackage hype!).
+     *
+     * This method should be preferred over parameterAsCompatibleSourceLayerPath() when an algorithm is able
+     * to correctly handle files with multiple layers. Unlike parameterAsCompatibleSourceLayerPath(), it will not force
+     * a conversion in this case and will return the target layer name in the \a layerName argument.
+     *
+     * \param definition associated parameter definition
+     * \param parameters input parameter value map
+     * \param context processing context
+     * \param compatibleFormats a list of lowercase file extensions compatible with the algorithm
+     * \param preferredFormat preferred format extension to use if conversion if required
+     * \param feedback feedback object
+     * \param layerName will be set to the target layer name for multi-layer sources (e.g. Geopackage)
+     *
+     * \returns path to source layer, or nearly converted compatible layer
+     *
+     * \see parameterAsCompatibleSourceLayerPath()
+     * \since QGIS 3.10
+     */
+    static QString parameterAsCompatibleSourceLayerPathAndLayerName( const QgsProcessingParameterDefinition *definition, const QVariantMap &parameters,
+        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = nullptr, QString *layerName SIP_OUT = nullptr );
 
     /**
      * Evaluates the parameter with matching \a definition to a map layer.
@@ -1030,6 +1067,20 @@ class CORE_EXPORT QgsProcessingParameters
     static QList< QgsMapLayer *> parameterAsLayerList( const QgsProcessingParameterDefinition *definition, const QVariant &value, QgsProcessingContext &context );
 
     /**
+     * Evaluates the parameter with matching \a definition to a list of files (for QgsProcessingParameterMultipleLayers in QgsProcessing:TypeFile mode).
+     *
+     * \since QGIS 3.10
+     */
+    static QStringList parameterAsFileList( const QgsProcessingParameterDefinition *definition, const QVariant &value, QgsProcessingContext &context );
+
+    /**
+     * Evaluates the parameter with matching \a definition to a list of files (for QgsProcessingParameterMultipleLayers in QgsProcessing:TypeFile mode).
+     *
+     * \since QGIS 3.10
+     */
+    static QStringList parameterAsFileList( const QgsProcessingParameterDefinition *definition, const QVariantMap &parameters, QgsProcessingContext &context );
+
+    /**
      * Evaluates the parameter with matching \a definition to a range of values.
      */
     static QList<double> parameterAsRange( const QgsProcessingParameterDefinition *definition, const QVariantMap &parameters, QgsProcessingContext &context );
@@ -1091,6 +1142,19 @@ class CORE_EXPORT QgsProcessingParameters
      */
     static QgsLayoutItem *parameterAsLayoutItem( const QgsProcessingParameterDefinition *definition, const QVariant &value, QgsProcessingContext &context, QgsPrintLayout *layout );
 
+    /**
+     * Returns the color associated with an point parameter value, or an invalid color if the parameter was not set.
+     *
+     * \since QGIS 3.10
+     */
+    static QColor parameterAsColor( const QgsProcessingParameterDefinition *definition, const QVariantMap &parameters, QgsProcessingContext &context );
+
+    /**
+     * Returns the color associated with an color parameter value, or an invalid color if the parameter was not set.
+     *
+     * \since QGIS 3.10
+     */
+    static QColor parameterAsColor( const QgsProcessingParameterDefinition *definition, const QVariant &value, QgsProcessingContext &context );
 
     /**
      * Creates a new QgsProcessingParameterDefinition using the configuration from a
@@ -1297,9 +1361,13 @@ class CORE_EXPORT QgsProcessingParameterFile : public QgsProcessingParameterDefi
 
     /**
      * Constructor for QgsProcessingParameterFile.
+     *
+     * The \a extension argument allows for specifying a file extension associated with the parameter (e.g. "html"). Use \a fileFilter
+     * for a more flexible approach which allows for multiple file extensions. Only one of \a extension or \a fileFilter should be specified,
+     * if both are specified then \a fileFilter takes precedence.
      */
     QgsProcessingParameterFile( const QString &name, const QString &description = QString(), Behavior behavior = File, const QString &extension = QString(), const QVariant &defaultValue = QVariant(),
-                                bool optional = false );
+                                bool optional = false, const QString &fileFilter = QString() );
 
     /**
      * Returns the type name for the parameter class.
@@ -1325,15 +1393,42 @@ class CORE_EXPORT QgsProcessingParameterFile : public QgsProcessingParameterDefi
 
     /**
      * Returns any specified file extension for the parameter.
+     *
+     * \note See fileFilter() for a more flexible approach.
+     *
      * \see setExtension()
      */
     QString extension() const { return mExtension; }
 
     /**
      * Sets a file \a extension for the parameter.
+     *
+     * Calling this method resets any existing fileFilter().
+     *
+     * \note See setFileFilter() for a more flexible approach.
+     *
      * \see extension()
      */
-    void setExtension( const QString &extension ) { mExtension = extension; }
+    void setExtension( const QString &extension );
+
+    /**
+     * Returns the file filter string for file destinations compatible with this parameter.
+     * \see setFileFilter()
+     * \see extension()
+     * \since QGIS 3.10
+     */
+    QString fileFilter() const;
+
+    /**
+     * Sets the file \a filter string for file destinations compatible with this parameter.
+     *
+     * Calling this method resets any existing extension() setting.
+     *
+     * \see fileFilter()
+     * \see setExtension()
+     * \since QGIS 3.10
+     */
+    void setFileFilter( const QString &filter );
 
     QVariantMap toVariantMap() const override;
     bool fromVariantMap( const QVariantMap &map ) override;
@@ -1347,6 +1442,7 @@ class CORE_EXPORT QgsProcessingParameterFile : public QgsProcessingParameterDefi
 
     Behavior mBehavior = File;
     QString mExtension;
+    QString mFileFilter;
 };
 
 /**
@@ -2638,7 +2734,8 @@ class CORE_EXPORT QgsProcessingParameterFolderDestination : public QgsProcessing
      */
     QgsProcessingParameterFolderDestination( const QString &name, const QString &description = QString(),
         const QVariant &defaultValue = QVariant(),
-        bool optional = false );
+        bool optional = false,
+        bool createByDefault = true );
 
     /**
      * Returns the type name for the parameter class.
@@ -2839,6 +2936,69 @@ class CORE_EXPORT QgsProcessingParameterLayoutItem : public QgsProcessingParamet
   private:
     QString mParentLayoutParameterName;
     int mItemType = -1;
+};
+
+/**
+ * \class QgsProcessingParameterColor
+ * \ingroup core
+ * A color parameter for processing algorithms.
+ *
+ * QgsProcessingParameterColor should be evaluated by calling QgsProcessingAlgorithm::parameterAsColor().
+ *
+ * \since QGIS 3.10
+ */
+class CORE_EXPORT QgsProcessingParameterColor : public QgsProcessingParameterDefinition
+{
+  public:
+
+    /**
+     * Constructor for QgsProcessingParameterColor.
+     *
+     * If \a opacityEnabled is TRUE, then users will have the option of varying color opacity.
+     */
+    QgsProcessingParameterColor( const QString &name, const QString &description = QString(), const QVariant &defaultValue = QVariant(),
+                                 bool opacityEnabled = true,
+                                 bool optional = false );
+
+    /**
+     * Returns the type name for the parameter class.
+     */
+    static QString typeName() { return QStringLiteral( "color" ); }
+    QgsProcessingParameterDefinition *clone() const override SIP_FACTORY;
+    QString type() const override { return typeName(); }
+    QString valueAsPythonString( const QVariant &value, QgsProcessingContext &context ) const override;
+    QString asScriptCode() const override;
+    QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const override;
+    bool checkValueIsAcceptable( const QVariant &input, QgsProcessingContext *context = nullptr ) const override;
+    QVariantMap toVariantMap() const override;
+    bool fromVariantMap( const QVariantMap &map ) override;
+
+    /**
+     * Returns TRUE if the parameter allows opacity control.
+     *
+     * The default behavior is to allow users to set opacity for the color.
+     * \see setOpacityEnabled()
+     */
+    bool opacityEnabled() const;
+
+    /**
+     * Sets whether the parameter allows opacity control.
+     *
+     * The default behavior is to allow users to set opacity for the color.
+     *
+     * \see opacityEnabled()
+     */
+    void setOpacityEnabled( bool enabled );
+
+    /**
+     * Creates a new parameter using the definition from a script code.
+     */
+    static QgsProcessingParameterColor *fromScriptCode( const QString &name, const QString &description, bool isOptional, const QString &definition ) SIP_FACTORY;
+
+  private:
+
+    bool mAllowOpacity = true;
+
 };
 
 // clazy:excludeall=qstring-allocations

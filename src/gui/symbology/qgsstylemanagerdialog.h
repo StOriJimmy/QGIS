@@ -37,6 +37,7 @@ class QgsCheckableStyleModel: public QgsStyleProxyModel
     Q_OBJECT
   public:
 
+    explicit QgsCheckableStyleModel( QgsStyleModel *sourceModel, QObject *parent = nullptr, bool readOnly = false );
     explicit QgsCheckableStyleModel( QgsStyle *style, QObject *parent = nullptr, bool readOnly = false );
 
     void setCheckable( bool checkable );
@@ -196,7 +197,7 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     Q_DECL_DEPRECATED void itemChanged( QStandardItem *item ) SIP_DEPRECATED;
 
     /**
-     * Trigerred when the current group (or tag) is changed.
+     * Triggered when the current group (or tag) is changed.
      */
     void groupChanged( const QModelIndex & );
 
@@ -331,6 +332,10 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
 
     void copyItemsToDefault();
 
+    void copyItem();
+
+    void pasteItem();
+
   private:
     int selectedItemType();
 
@@ -390,6 +395,9 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     QMenu *mMenuBtnAddItemLabelSettings = nullptr;
 
     QAction *mActionCopyToDefault = nullptr;
+
+    QAction *mActionCopyItem = nullptr;
+    QAction *mActionPasteItem = nullptr;
 
     int mBlockGroupUpdates = 0;
 

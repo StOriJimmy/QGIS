@@ -24,6 +24,7 @@
 #include "qgscoordinatereferencesystem.h"
 #include "qgsnetworkreplyparser.h"
 #include "qgswmscapabilities.h"
+#include "qgsprovidermetadata.h"
 
 #include <QString>
 #include <QStringList>
@@ -113,6 +114,9 @@ class QgsWmsProvider : public QgsRasterDataProvider
     Q_OBJECT
 
   public:
+
+    static QString WMS_KEY;
+    static QString WMS_DESCRIPTION;
 
     /**
      * Constructor for the provider.
@@ -207,6 +211,7 @@ class QgsWmsProvider : public QgsRasterDataProvider
     QString lastError() override;
     QString lastErrorFormat() override;
     QString name() const override;
+    static QString providerKey();
     QString description() const override;
     void reloadData() override;
     bool renderInPreview( const QgsDataProvider::PreviewContext &context ) override;
@@ -325,6 +330,8 @@ class QgsWmsProvider : public QgsRasterDataProvider
 
     /* \brief add SRS or CRS parameter */
     void setSRSQueryItem( QUrl &url );
+
+    bool ignoreExtents() const override;
 
   private:
 
@@ -567,6 +574,14 @@ class QgsWmsStatistics
 };
 
 Q_DECLARE_TYPEINFO( QgsWmsProvider::TilePosition, Q_PRIMITIVE_TYPE );
+
+class QgsWmsProviderMetadata: public QgsProviderMetadata
+{
+  public:
+    QgsWmsProviderMetadata();
+    QgsWmsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options ) override;
+    QList<QgsDataItemProvider *> dataItemProviders() const override;
+};
 
 #endif
 

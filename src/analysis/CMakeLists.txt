@@ -104,6 +104,7 @@ SET(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmsimplify.cpp
   processing/qgsalgorithmsmooth.cpp
   processing/qgsalgorithmsnaptogrid.cpp
+  processing/qgsalgorithmsplitfeaturesbyattributecharacter.cpp
   processing/qgsalgorithmsplitlineantimeridian.cpp
   processing/qgsalgorithmsplitlinesbylength.cpp
   processing/qgsalgorithmsplitwithlines.cpp
@@ -120,6 +121,9 @@ SET(QGIS_ANALYSIS_SRCS
   processing/qgsalgorithmvectorize.cpp
   processing/qgsalgorithmwedgebuffers.cpp
   processing/qgsalgorithmzonalhistogram.cpp
+  processing/qgsbookmarkalgorithms.cpp
+  processing/qgsprojectstylealgorithms.cpp
+  processing/qgsstylealgorithms.cpp
 
   processing/qgsalgorithmnetworkanalysisbase.cpp
 
@@ -142,7 +146,6 @@ SET(QGIS_ANALYSIS_SRCS
   raster/qgsrastercalcnode.cpp
   raster/qgsrastercalculator.cpp
   raster/qgsrastermatrix.cpp
-  vector/mersenne-twister.cpp
   vector/qgsgeometrysnapper.cpp
   vector/qgsgeometrysnappersinglesource.cpp
   vector/qgszonalstatistics.cpp
@@ -282,7 +285,6 @@ SET(QGIS_ANALYSIS_HDRS
   mesh/qgsmeshcalculator.h
   mesh/qgsmeshcalcutils.h
 
-  vector/mersenne-twister.h
   vector/qgsgeometrysnapper.h
   vector/qgsgeometrysnappersinglesource.h
   vector/qgszonalstatistics.h
@@ -315,6 +317,8 @@ SET(QGIS_ANALYSIS_HDRS
   network/qgsnetworkdistancestrategy.h
   network/qgsgraphanalyzer.h
   network/qgsvectorlayerdirector.h
+
+  processing/qgsprojectstylealgorithms.h
 
   vector/geometry_checker/qgsgeometryanglecheck.h
   vector/geometry_checker/qgsgeometryareacheck.h
@@ -353,6 +357,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/src/core/processing
   ${CMAKE_SOURCE_DIR}/src/core/raster
   ${CMAKE_SOURCE_DIR}/src/core/mesh
+  ${CMAKE_SOURCE_DIR}/src/core/providers/meshmemory
   ${CMAKE_SOURCE_DIR}/src/core/symbology
   ${CMAKE_SOURCE_DIR}/src/core/metadata
   ${CMAKE_SOURCE_DIR}/src/core/expression

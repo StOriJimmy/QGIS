@@ -92,6 +92,25 @@ class CORE_EXPORT QgsLineString: public QgsCurve
      */
     explicit QgsLineString( const QgsLineSegment2D &segment );
 
+    /**
+     * Returns a new linestring created by segmentizing the bezier curve between \a start and \a end, with
+     * the specified control points.
+     *
+     * The \a segments parameter controls how many line segments will be present in the returned linestring.
+     *
+     * Any z or m values present in the input coordinates will be interpolated along with the x and y values.
+     *
+     * \since QGIS 3.10
+     */
+    static QgsLineString *fromBezierCurve( const QgsPoint &start, const QgsPoint &controlPoint1, const QgsPoint &controlPoint2, const QgsPoint &end, int segments = 30 ) SIP_FACTORY;
+
+    /**
+     * Returns a new linestring from a QPolygonF \a polygon input.
+     *
+     * \since QGIS 3.10
+     */
+    static QgsLineString *fromQPolygonF( const QPolygonF &polygon ) SIP_FACTORY;
+
     bool equals( const QgsCurve &other ) const override;
 
 #ifndef SIP_RUN
@@ -564,6 +583,14 @@ class CORE_EXPORT QgsLineString: public QgsCurve
 
     //curve interface
     double length() const override;
+
+    /**
+     * Returns the length in 3D world of the line string.
+     * If it is not a 3D line string, return its 2D length.
+     * \see length()
+     * \since QGIS 3.10
+     */
+    double length3D() const;
     QgsPoint startPoint() const override;
     QgsPoint endPoint() const override;
 

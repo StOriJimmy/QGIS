@@ -29,6 +29,9 @@ The Qgis class provides global constants for use throughout the application.
 #include "qgis.h"
 %End
   public:
+    static const QMetaObject staticMetaObject;
+
+  public:
     static const QString QGIS_VERSION;
     static const int QGIS_VERSION_INT;
     static const QString QGIS_RELEASE_NAME;
@@ -60,6 +63,15 @@ The Qgis class provides global constants for use throughout the application.
       CFloat64,
       ARGB32,
       ARGB32_Premultiplied
+    };
+
+    enum PythonMacroMode
+    {
+      Never,
+      Ask,
+      SessionOnly,
+      Always,
+      NotForThisSession,
     };
 
     static const double DEFAULT_SEARCH_RADIUS_MM;
@@ -194,7 +206,8 @@ Invalid < NULL < Values
 
 bool qgsVariantEqual( const QVariant &lhs, const QVariant &rhs );
 %Docstring
-Compares two QVariant values and returns whether they are equal, NULL values are treated as equal.
+Compares two QVariant values and returns whether they are equal, two NULL values are
+always treated as equal and 0 is not treated as equal with NULL
 
 :param lhs: first value
 :param rhs: second value

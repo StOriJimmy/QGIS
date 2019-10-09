@@ -457,7 +457,7 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
                         mSource->mSpatialColType == SctPcPatch;
 
   QString whereClause = QStringLiteral( "%1%2 && %3" )
-                        .arg( QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ),
+                        .arg( QgsPostgresConn::quotedIdentifier( mSource->mBoundingBoxColumn ),
                               castToGeometry ? "::geometry" : "",
                               qBox );
 
@@ -811,7 +811,41 @@ void QgsPostgresFeatureIterator::getFeatureAttribute( int idx, QgsPostgresResult
     return;
 
   const QgsField fld = mSource->mFields.at( idx );
-  QVariant v = QgsPostgresProvider::convertValue( fld.type(), fld.subType(), queryResult.PQgetvalue( row, col ), fld.typeName() );
+
+  QVariant v;
+
+  switch ( fld.type() )
+  {
+    case QVariant::ByteArray:
+    {
+      //special handling for binary field values
+      if ( ::PQgetisnull( queryResult.result(), row, col ) )
+      {
+        v = QVariant( QVariant::ByteArray );
+      }
+      else
+      {
+        size_t returnedLength = 0;
+        const char *value = ::PQgetvalue( queryResult.result(), row, col );
+        unsigned char *data = ::PQunescapeBytea( reinterpret_cast<const unsigned char *>( value ), &returnedLength );
+        if ( returnedLength == 0 )
+        {
+          v = QVariant( QVariant::ByteArray );
+        }
+        else
+        {
+          v = QByteArray( reinterpret_cast<const char *>( data ), int( returnedLength ) );
+        }
+        ::PQfreemem( data );
+      }
+      break;
+    }
+    default:
+    {
+      v = QgsPostgresProvider::convertValue( fld.type(), fld.subType(), queryResult.PQgetvalue( row, col ), fld.typeName() );
+      break;
+    }
+  }
   feature.setAttribute( idx, v );
 
   col++;
@@ -823,6 +857,7 @@ void QgsPostgresFeatureIterator::getFeatureAttribute( int idx, QgsPostgresResult
 QgsPostgresFeatureSource::QgsPostgresFeatureSource( const QgsPostgresProvider *p )
   : mConnInfo( p->mUri.connectionInfo( false ) )
   , mGeometryColumn( p->mGeometryColumn )
+  , mBoundingBoxColumn( p->mBoundingBoxColumn )
   , mSqlWhereClause( p->filterWhereClause() )
   , mFields( p->mAttributeFields )
   , mSpatialColType( p->mSpatialColType )

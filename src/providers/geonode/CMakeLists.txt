@@ -1,21 +1,24 @@
 
 SET (GEONODE_SRCS
   qgsgeonodeprovider.cpp
+  qgsgeonodedataitems.cpp
 )
 
 SET(GEONODE_MOC_HDRS
+    qgsgeonodedataitems.h
 )
 
 IF (WITH_GUI)
   SET(GEONODE_SRCS ${GEONODE_SRCS}
-    qgsgeonodedataitems.cpp
+    qgsgeonodeprovidergui.cpp
+    qgsgeonodedataitemguiprovider.cpp
     qgsgeonodenewconnection.cpp
     qgsgeonodesourceselect.cpp
   )
   SET(GEONODE_MOC_HDRS ${GEONODE_MOC_HDRS}
+    qgsgeonodedataitemguiprovider.h
     qgsgeonodesourceselect.h
     qgsgeonodenewconnection.h
-    qgsgeonodedataitems.h
   )
 ENDIF ()
 
@@ -54,6 +57,7 @@ IF (WITH_GUI)
   TARGET_LINK_LIBRARIES (geonodeprovider
     qgis_gui
   )
+  ADD_DEPENDENCIES(geonodeprovider ui)
 ENDIF ()
 
 TARGET_COMPILE_DEFINITIONS(geonodeprovider PRIVATE "-DQT_NO_FOREACH")

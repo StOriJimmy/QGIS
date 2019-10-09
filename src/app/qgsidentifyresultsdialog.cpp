@@ -80,7 +80,8 @@
 #include "qgsgui.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsidentifymenu.h"
-
+#include "qgsjsonutils.h"
+#include <nlohmann/json.hpp>
 
 QgsIdentifyResultsWebView::QgsIdentifyResultsWebView( QWidget *parent ) : QgsWebView( parent )
 {
@@ -198,7 +199,7 @@ QgsWebView *QgsIdentifyResultsWebView::createWindow( QWebPage::WebWindowType typ
 //    widget (until the QTreeWidget itself is large enough to show the whole
 //    inserted widget).  => We have to keep the height of QgsIdentifyResultsWebView smaller
 //    than the height of QTreeWidget so that a user can see it entire, even if
-//    this height is smaller than QgsIdentifyResultsWebView content (i.e. QgsIdentifyResultsWebView scroolbar
+//    this height is smaller than QgsIdentifyResultsWebView content (i.e. QgsIdentifyResultsWebView scrollbar
 //    is added). We make it even a bit smaller so that a user can see a bit of
 //    context (items above/below) when scrolling which is more pleasant.
 //
@@ -907,9 +908,13 @@ void QgsIdentifyResultsDialog::addFeature( QgsRasterLayer *layer,
             formattedValue =  QLocale().toString( val, 'f', 0 );
           }
         }
-        else
+        else if ( ! formattedValue.isEmpty() )
         {
           isString = true;
+        }
+        else
+        {
+          formattedValue = QString::fromStdString( QgsJsonUtils::jsonFromVariant( value ).dump() );
         }
       }
       QTreeWidgetItem *attrItem = new QTreeWidgetItem( { fields.at( i ).name(), formattedValue } );
@@ -941,7 +946,7 @@ void QgsIdentifyResultsDialog::addFeature( QgsRasterLayer *layer,
     {
       attrItem->webView()->setZoomFactor( attrItem->webView()->zoomFactor() * ( currentFormat == QgsRaster::IdentifyFormatHtml ? 0.7 : 0.9 ) );
     }
-    connect( attrItem->webView(), &QWebView::linkClicked, [ ]( const QUrl & url )
+    connect( attrItem->webView()->page(), &QWebPage::linkClicked, [ ]( const QUrl & url )
     {
       QDesktopServices::openUrl( url );
     } );
@@ -949,9 +954,10 @@ void QgsIdentifyResultsDialog::addFeature( QgsRasterLayer *layer,
     featItem->addChild( attrItem ); // before setHtml()!
     if ( !attributes.isEmpty() )
     {
-      auto value { QgsStringUtils::insertLinks( attributes.begin().value() ) };
+      QString value { attributes.begin().value() };
       if ( currentFormat ==  QgsRaster::IdentifyFormatText )
       {
+        value = QgsStringUtils::insertLinks( value );
         value.prepend( QStringLiteral( "<pre style=\"font-family: monospace;\">" ) ).append( QStringLiteral( "</pre>" ) );
       }
       attrItem->setHtml( value );

@@ -109,6 +109,10 @@ fi
 
 trap cleanup EXIT
 
+if [[ "$(git name-rev --name-only HEAD)" =~ ^release-[0-9]+_[0-9]+$ ]]; then
+	TX_FLAGS=-b
+fi
+
 echo Saving translations
 files="$files $(find python -name "*.ts")"
 [ $action = push ] && files="$files i18n/qgis_*.ts"
@@ -116,7 +120,7 @@ files="$files $(find python -name "*.ts")"
 
 if [ $action = push ]; then
 	echo Pulling source from transifex...
-	tx pull -s -l none
+	tx pull -s -l none --parallel $TX_FLAGS
 	if ! [ -f "i18n/qgis_en.ts" ]; then
 		echo Download of source translation failed
 		exit 1
@@ -136,7 +140,7 @@ elif [ $action = pull ]; then
 
 	fail=1
 	for i in $(seq 10); do
-		tx pull $o -s --minimum-perc=35 && fail=0 && break
+		tx pull $o -s --minimum-perc=35 --parallel $TX_FLAGS && fail=0 && break
 		echo Retrying...
 		sleep 10
 	done
@@ -147,61 +151,63 @@ elif [ $action = pull ]; then
 	fi
 fi
 
-echo Updating python translations
-(
-	cd python
-	mkdir -p tmp
-	pylupdate5 user.py utils.py {console,pyplugin_installer}/*.{py,ui} -ts python-i18n.ts
-	perl ../scripts/ts2ui.pl python-i18n.ts tmp
-	rm python-i18n.ts
-)
-for i in python/plugins/*/CMakeLists.txt; do
-	cd ${i%/*}
-	cat <<EOF >python-i18n.pro
-SOURCES = $(find . -type f -name "*.py" -printf "	%p \
-")
+if [ -d "$builddir" ]; then
+	echo Updating python translations
+	(
+		cd python
+		mkdir -p tmp
+		pylupdate5 user.py utils.py {console,pyplugin_installer}/*.{py,ui} -ts python-i18n.ts
+		perl ../scripts/ts2ui.pl python-i18n.ts tmp
+		rm python-i18n.ts
+	)
+	for i in python/plugins/*/CMakeLists.txt; do
+		cd ${i%/*}
+		cat <<EOF >python-i18n.pro
+SOURCES = $(find . -type f -name "*.py" -print | sed -e 's/^/  /' -e 's/$/ \\/')
 
-FORMS = $(find . -type f -name "*.ui" -printf "	%p \
-")
+
+FORMS = $(find . -type f -name "*.ui" -print | sed -e 's/^/  /' -e 's/$/ \\/')
+
 
 TRANSLATIONS = python-i18n.ts
 EOF
 
-	pylupdate5 -tr-function trAlgorithm python-i18n.pro
-	mkdir -p tmp
-	perl ../../../scripts/ts2ui.pl python-i18n.ts tmp
-	rm python-i18n.ts python-i18n.pro
-	cd ../../..
-done
+		pylupdate5 -tr-function trAlgorithm python-i18n.pro
+		mkdir -p tmp
+		perl ../../../scripts/ts2ui.pl python-i18n.ts tmp
+		rm python-i18n.ts python-i18n.pro
+		cd ../../..
+	done
 
-echo Updating GRASS module translations
-perl scripts/qgm2ui.pl >src/plugins/grass/grasslabels-i18n.ui
+	echo Updating GRASS module translations
+	perl scripts/qgm2ui.pl >src/plugins/grass/grasslabels-i18n.ui
 
-echo Updating processing translations
-mkdir -p python/plugins/processing/tmp
-perl scripts/processing2ui.pl python/plugins/processing/tmp
+	echo Updating processing translations
+	mkdir -p python/plugins/processing/tmp
+	perl scripts/processing2ui.pl python/plugins/processing/tmp
 
-echo Updating appinfo files
-python3 scripts/appinfo2ui.py >src/app/appinfo-i18n.ui
+	echo Updating appinfo files
+	python3 scripts/appinfo2ui.py >src/app/appinfo-i18n.ui
 
-echo Creating qmake project file
-$QMAKE -project -o qgis_ts.pro -nopwd $SRCDIR/src $SRCDIR/python $SRCDIR/i18n $textcpp
+	echo Creating qmake project file
+	$QMAKE -project -o qgis_ts.pro -nopwd $SRCDIR/src $SRCDIR/python $SRCDIR/i18n $textcpp
 
-QT_INSTALL_HEADERS=$(qmake -query QT_INSTALL_HEADERS)
+	QT_INSTALL_HEADERS=$(qmake -query QT_INSTALL_HEADERS)
 
-echo "TR_EXCLUDE = ${QT_INSTALL_HEADERS%}/*" >>qgis_ts.pro
+	echo "TR_EXCLUDE = ${QT_INSTALL_HEADERS%}/*" >>qgis_ts.pro
 
-echo Updating translations
-$LUPDATE -no-ui-lines -no-obsolete -locations absolute -verbose qgis_ts.pro
+	echo Updating translations
+	$LUPDATE -no-ui-lines -no-obsolete -locations absolute -verbose qgis_ts.pro
 
-perl -i.bak -ne 'print unless /^\s+<location.*(qgs(expression|contexthelp)_texts\.cpp|-i18n\.(ui|cpp)).*$/;' i18n/qgis_*.ts
+	perl -i.bak -ne 'print unless /^\s+<location.*(qgs(expression|contexthelp)_texts\.cpp|-i18n\.(ui|cpp)).*$/;' i18n/qgis_*.ts
+fi
 
 if [ $action = push ]; then
 	cp i18n/qgis_en.ts /tmp/qgis_en.ts-uploading
 	echo Pushing translation...
 	fail=1
 	for i in $(seq 10); do
-		tx push -s && fail=0 && break
+		tx push -s --parallel $TX_FLAGS && fail=0 && break
 		echo Retrying...
 		sleep 10
 	done

@@ -587,6 +587,32 @@ Apply the skipped drivers list to gdal
 .. seealso:: :py:func:`skippedGdalDrivers`
 %End
 
+    static void registerGdalDriversFromSettings();
+%Docstring
+Register gdal drivers, excluding the ones mentioned in "gdal/skipList" setting.
+
+.. versionadded:: 3.10
+%End
+
+    static QStringList deferredSkippedGdalDrivers();
+%Docstring
+Returns the list of gdal drivers that have been disabled in the current session,
+and thus, for safety, should not be disabled right now, but at the
+next application restart.
+
+.. versionadded:: 3.10
+%End
+
+    static void setSkippedGdalDrivers( const QStringList &skippedGdalDrivers,
+                                       const QStringList &deferredSkippedGdalDrivers );
+%Docstring
+Sets the list of gdal drivers that should be disabled (``skippedGdalDrivers``),
+but excludes for now the ones defines in ``deferredSkippedGdalDrivers``.
+This writes the "gdal/skipList" setting.
+
+.. versionadded:: 3.10
+%End
+
     static int maxThreads();
 %Docstring
 Gets maximum concurrent thread count
@@ -676,32 +702,62 @@ Returns the application's validity check registry, used for managing validity ch
 .. versionadded:: 3.6
 %End
 
-    static QgsSymbolLayerRegistry *symbolLayerRegistry();
+    static QgsSymbolLayerRegistry *symbolLayerRegistry() /KeepReference/;
 %Docstring
 Returns the application's symbol layer registry, used for managing symbol layers.
 
 .. versionadded:: 3.0
 %End
 
-    static QgsLayoutItemRegistry *layoutItemRegistry();
+    static QgsCalloutRegistry *calloutRegistry() /KeepReference/;
+%Docstring
+Returns the application's callout registry, used for managing callout types.
+
+.. versionadded:: 3.10
+%End
+
+    static QgsLayoutItemRegistry *layoutItemRegistry() /KeepReference/;
 %Docstring
 Returns the application's layout item registry, used for layout item types.
 
 .. versionadded:: 3.0
 %End
 
-    static QgsGpsConnectionRegistry *gpsConnectionRegistry();
+    static QgsGpsConnectionRegistry *gpsConnectionRegistry() /KeepReference/;
 %Docstring
 Returns the application's GPS connection registry, used for managing GPS connections.
 
 .. versionadded:: 3.0
 %End
 
-    static QgsPluginLayerRegistry *pluginLayerRegistry();
+    static QgsPluginLayerRegistry *pluginLayerRegistry() /KeepReference/;
 %Docstring
 Returns the application's plugin layer registry, used for managing plugin layer types.
 
 .. versionadded:: 3.0
+%End
+
+    static QgsClassificationMethodRegistry *classificationMethodRegistry() /KeepReference/;
+%Docstring
+Returns the application's classification methods registry, used in graduated renderer
+
+.. versionadded:: 3.10
+%End
+
+    static QgsBookmarkManager *bookmarkManager();
+%Docstring
+Returns the application's bookmark manager, used for storing installation-wide bookmarks.
+
+.. versionadded:: 3.10
+%End
+
+    static QgsStyleModel *defaultStyleModel();
+%Docstring
+Returns a shared QgsStyleModel containing the default style library (see QgsStyle.defaultStyle()).
+
+Using this shared model instead of creating a new QgsStyleModel improves performance.
+
+.. versionadded:: 3.10
 %End
 
     static QgsMessageLog *messageLog();
@@ -732,7 +788,7 @@ algorithms, and various parameters and outputs.
 .. versionadded:: 3.0
 %End
 
-    static QgsPageSizeRegistry *pageSizeRegistry();
+    static QgsPageSizeRegistry *pageSizeRegistry() /KeepReference/;
 %Docstring
 Returns the application's page size registry, used for managing layout page sizes.
 

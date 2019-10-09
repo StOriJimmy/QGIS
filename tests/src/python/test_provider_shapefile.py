@@ -19,7 +19,18 @@ import osgeo.gdal
 import osgeo.ogr
 import sys
 
-from qgis.core import QgsSettings, QgsFeature, QgsField, QgsGeometry, QgsVectorLayer, QgsFeatureRequest, QgsVectorDataProvider, QgsWkbTypes
+from qgis.core import (
+    QgsApplication,
+    QgsSettings,
+    QgsFeature,
+    QgsField,
+    QgsGeometry,
+    QgsVectorLayer,
+    QgsFeatureRequest,
+    QgsVectorDataProvider,
+    QgsWkbTypes,
+    QgsVectorLayerExporter,
+)
 from qgis.PyQt.QtCore import QVariant
 from qgis.testing import start_app, unittest
 from utilities import unitTestDataPath
@@ -712,6 +723,197 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
         self.assertEqual(f.geometry().wkbType(), QgsWkbTypes.MultiPolygonZ)
         self.assertEqual(f.geometry().constGet().asWkt(),
                          'MultiPolygonZ (((0 0 0, 0 1 0, 1 1 0, 0 0 0)),((0 0 0, 1 1 0, 1 0 0, 0 0 0)),((0 0 0, 0 -1 0, 1 -1 0, 0 0 0)),((0 0 0, 1 -1 0, 1 0 0, 0 0 0)))')
+
+    def testShzSupport(self):
+        ''' Test support for single layer compressed shapefiles (.shz) '''
+
+        if int(osgeo.gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 1, 0):
+            return
+
+        tmpfile = os.path.join(self.basetestpath, 'testShzSupport.shz')
+        ds = osgeo.ogr.GetDriverByName('ESRI Shapefile').CreateDataSource(tmpfile)
+        lyr = ds.CreateLayer('testShzSupport', geom_type=osgeo.ogr.wkbPoint)
+        lyr.CreateField(osgeo.ogr.FieldDefn('attr', osgeo.ogr.OFTInteger))
+        f = osgeo.ogr.Feature(lyr.GetLayerDefn())
+        f.SetField('attr', 1)
+        f.SetGeometry(osgeo.ogr.CreateGeometryFromWkt('POINT(0 0)'))
+        lyr.CreateFeature(f)
+        f = None
+        ds = None
+
+        vl = QgsVectorLayer(tmpfile, 'test', 'ogr')
+        self.assertTrue(vl.isValid())
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
+        f = next(vl.getFeatures())
+        assert f['attr'] == 1
+        self.assertEqual(f.geometry().constGet().asWkt(), 'Point (0 0)')
+
+        self.assertTrue(vl.startEditing())
+        self.assertTrue(vl.changeAttributeValue(f.id(), 0, -1))
+        self.assertTrue(vl.commitChanges())
+
+        f = next(vl.getFeatures())
+        assert f['attr'] == -1
+
+        # Check DataItem
+        registry = QgsApplication.dataItemProviderRegistry()
+        ogrprovider = next(provider for provider in registry.providers() if provider.name() == 'OGR')
+        item = ogrprovider.createDataItem(tmpfile, None)
+        self.assertTrue(item.uri().endswith('testShzSupport.shz'))
+
+    def testShpZipSupport(self):
+        ''' Test support for multi layer compressed shapefiles (.shp.zip) '''
+
+        if int(osgeo.gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 1, 0):
+            return
+
+        tmpfile = os.path.join(self.basetestpath, 'testShpZipSupport.shp.zip')
+        ds = osgeo.ogr.GetDriverByName('ESRI Shapefile').CreateDataSource(tmpfile)
+        lyr = ds.CreateLayer('layer1', geom_type=osgeo.ogr.wkbPoint)
+        lyr.CreateField(osgeo.ogr.FieldDefn('attr', osgeo.ogr.OFTInteger))
+        f = osgeo.ogr.Feature(lyr.GetLayerDefn())
+        f.SetField('attr', 1)
+        f.SetGeometry(osgeo.ogr.CreateGeometryFromWkt('POINT(0 0)'))
+        lyr.CreateFeature(f)
+        f = None
+        lyr = ds.CreateLayer('layer2', geom_type=osgeo.ogr.wkbMultiLineString)
+        lyr.CreateField(osgeo.ogr.FieldDefn('attr', osgeo.ogr.OFTInteger))
+        f = osgeo.ogr.Feature(lyr.GetLayerDefn())
+        f.SetField('attr', 2)
+        f.SetGeometry(osgeo.ogr.CreateGeometryFromWkt('LINESTRING(0 0,1 1)'))
+        lyr.CreateFeature(f)
+        f = None
+        ds = None
+
+        vl1 = QgsVectorLayer(tmpfile + '|layername=layer1', 'test', 'ogr')
+        vl2 = QgsVectorLayer(tmpfile + '|layername=layer2', 'test', 'ogr')
+        self.assertTrue(vl1.isValid())
+        self.assertTrue(vl2.isValid())
+        self.assertEqual(vl1.wkbType(), QgsWkbTypes.Point)
+        self.assertEqual(vl2.wkbType(), QgsWkbTypes.MultiLineString)
+        f1 = next(vl1.getFeatures())
+        f2 = next(vl2.getFeatures())
+        assert f1['attr'] == 1
+        self.assertEqual(f1.geometry().constGet().asWkt(), 'Point (0 0)')
+        assert f2['attr'] == 2
+        self.assertEqual(f2.geometry().constGet().asWkt(), 'MultiLineString ((0 0, 1 1))')
+
+        self.assertTrue(vl1.startEditing())
+        self.assertTrue(vl2.startEditing())
+        self.assertTrue(vl1.changeAttributeValue(f1.id(), 0, -1))
+        self.assertTrue(vl2.changeAttributeValue(f2.id(), 0, -2))
+        self.assertTrue(vl1.commitChanges())
+        self.assertTrue(vl2.commitChanges())
+
+        f = next(vl1.getFeatures())
+        assert f['attr'] == -1
+
+        f = next(vl2.getFeatures())
+        assert f['attr'] == -2
+
+        # Check DataItem
+        registry = QgsApplication.dataItemProviderRegistry()
+        ogrprovider = next(provider for provider in registry.providers() if provider.name() == 'OGR')
+        item = ogrprovider.createDataItem(tmpfile, None)
+        children = item.createChildren()
+        self.assertEqual(len(children), 2)
+        uris = sorted([children[i].uri() for i in range(2)])
+        self.assertIn('testShpZipSupport.shp.zip|layername=layer1', uris[0])
+        self.assertIn('testShpZipSupport.shp.zip|layername=layer2', uris[1])
+
+        gdalprovider = next(provider for provider in registry.providers() if provider.name() == 'GDAL')
+        item = gdalprovider.createDataItem(tmpfile, None)
+        assert not item
+
+    def testWriteShapefileWithSingleConversion(self):
+        """Check writing geometries from a POLYGON ESRI shapefile does not
+        convert to multi when "forceSinglePartGeometryType" options is TRUE
+        also checks failing cases.
+
+        OGR provider always report MULTI for POLYGON and LINESTRING, but if we set
+        the import option "forceSinglePartGeometryType" the writer must respect the
+        actual single-part type if the features in the data provider are actually single
+        and not multi.
+        """
+
+        ml = QgsVectorLayer(
+            ('Polygon?crs=epsg:4326&field=id:int'),
+            'test',
+            'memory')
+
+        provider = ml.dataProvider()
+        ft = QgsFeature()
+        ft.setGeometry(QgsGeometry.fromWkt('Polygon ((0 0, 0 1, 1 1, 1 0, 0 0))'))
+        ft.setAttributes([1])
+        res, features = provider.addFeatures([ft])
+
+        dest_file_name = os.path.join(self.basetestpath, 'multipart.shp')
+        write_result, error_message = QgsVectorLayerExporter.exportLayer(ml,
+                                                                         dest_file_name,
+                                                                         'ogr',
+                                                                         ml.crs(),
+                                                                         False,
+                                                                         {"driverName": "ESRI Shapefile"}
+                                                                         )
+        self.assertEqual(write_result, QgsVectorLayerExporter.NoError, error_message)
+
+        # Open the newly created layer
+        shapefile_layer = QgsVectorLayer(dest_file_name)
+
+        dest_singlepart_file_name = os.path.join(self.basetestpath, 'singlepart.gpkg')
+        write_result, error_message = QgsVectorLayerExporter.exportLayer(shapefile_layer,
+                                                                         dest_singlepart_file_name,
+                                                                         'ogr',
+                                                                         shapefile_layer.crs(),
+                                                                         False,
+                                                                         {
+                                                                             "forceSinglePartGeometryType": True,
+                                                                             "driverName": "GPKG",
+                                                                         })
+        self.assertEqual(write_result, QgsVectorLayerExporter.NoError, error_message)
+
+        # Load result layer and check that it's NOT MULTI
+        single_layer = QgsVectorLayer(dest_singlepart_file_name)
+        self.assertTrue(single_layer.isValid())
+        self.assertTrue(QgsWkbTypes.isSingleType(single_layer.wkbType()))
+
+        # Now save the shapfile layer into a gpkg with no force options
+        dest_multipart_file_name = os.path.join(self.basetestpath, 'multipart.gpkg')
+        write_result, error_message = QgsVectorLayerExporter.exportLayer(shapefile_layer,
+                                                                         dest_multipart_file_name,
+                                                                         'ogr',
+                                                                         shapefile_layer.crs(),
+                                                                         False,
+                                                                         {
+                                                                             "forceSinglePartGeometryType": False,
+                                                                             "driverName": "GPKG",
+                                                                         })
+        self.assertEqual(write_result, QgsVectorLayerExporter.NoError, error_message)
+        # Load result layer and check that it's MULTI
+        multi_layer = QgsVectorLayer(dest_multipart_file_name)
+        self.assertTrue(multi_layer.isValid())
+        self.assertTrue(QgsWkbTypes.isMultiType(multi_layer.wkbType()))
+
+        # Failing case: add a real multi to the shapefile and try to force to single
+        self.assertTrue(shapefile_layer.startEditing())
+        ft = QgsFeature()
+        ft.setGeometry(QgsGeometry.fromWkt('MultiPolygon (((0 0, 0 1, 1 1, 1 0, 0 0)), ((0 0, 0 1.5, 1 1.5, 1 0, 0 0)))'))
+        ft.setAttributes([2])
+        self.assertTrue(shapefile_layer.addFeatures([ft]))
+        self.assertTrue(shapefile_layer.commitChanges())
+
+        dest_multipart_failure_file_name = os.path.join(self.basetestpath, 'multipart_failure.gpkg')
+        write_result, error_message = QgsVectorLayerExporter.exportLayer(shapefile_layer,
+                                                                         dest_multipart_failure_file_name,
+                                                                         'ogr',
+                                                                         shapefile_layer.crs(),
+                                                                         False,
+                                                                         {
+                                                                             "forceSinglePartGeometryType": True,
+                                                                             "driverName": "GPKG",
+                                                                         })
+        self.assertTrue(QgsWkbTypes.isMultiType(multi_layer.wkbType()))
+        self.assertEqual(write_result, QgsVectorLayerExporter.ErrFeatureWriteFailed, "Failed to transform a feature with ID '1' to single part. Writing stopped.")
 
 
 if __name__ == '__main__':

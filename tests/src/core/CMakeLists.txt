@@ -6,8 +6,9 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/external/kdbush/include
   ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/annotations
+  ${CMAKE_SOURCE_DIR}/src/core/annotations
   ${CMAKE_SOURCE_DIR}/src/core/auth
+  ${CMAKE_SOURCE_DIR}/src/core/callouts
   ${CMAKE_SOURCE_DIR}/src/core/dxf
   ${CMAKE_SOURCE_DIR}/src/core/expression
   ${CMAKE_SOURCE_DIR}/src/core/geometry
@@ -20,18 +21,22 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/src/core/pal
   ${CMAKE_SOURCE_DIR}/src/core/processing
   ${CMAKE_SOURCE_DIR}/src/core/processing/models
+  ${CMAKE_SOURCE_DIR}/src/core/providers/gdal
+  ${CMAKE_SOURCE_DIR}/src/core/providers/ogr
+  ${CMAKE_SOURCE_DIR}/src/core/providers/meshmemory
   ${CMAKE_SOURCE_DIR}/src/core/raster
   ${CMAKE_SOURCE_DIR}/src/core/scalebar
   ${CMAKE_SOURCE_DIR}/src/core/symbology
+  ${CMAKE_SOURCE_DIR}/src/core/classification
   ${CMAKE_SOURCE_DIR}/src/core/mesh
   ${CMAKE_SOURCE_DIR}/src/test
   ${CMAKE_BINARY_DIR}/src/core
 )
 INCLUDE_DIRECTORIES(SYSTEM
-  ${QT_INCLUDE_DIR}
-  ${GDAL_INCLUDE_DIR}
   ${PROJ_INCLUDE_DIR}
   ${GEOS_INCLUDE_DIR}
+  ${QT_INCLUDE_DIR}
+  ${GDAL_INCLUDE_DIR}
   ${QCA_INCLUDE_DIR}
   ${QTKEYCHAIN_INCLUDE_DIR}
   ${SQLITE3_INCLUDE_DIR}
@@ -84,6 +89,8 @@ SET(TESTS
  testqgsbrowsermodel.cpp
  testqgsbrowserproxymodel.cpp
  testqgscadutils.cpp
+ testqgscallout.cpp
+ testqgscalloutregistry.cpp
  testqgsclipper.cpp
  testqgscolorscheme.cpp
  testqgscolorschemeregistry.cpp
@@ -111,6 +118,7 @@ SET(TESTS
  testqgsgdalutils.cpp
  testqgsvectorfilewriter.cpp
  testqgsfontmarker.cpp
+ testqgsgeopdfexport.cpp
  testqgsgeometryimport.cpp
  testqgsgeometry.cpp
  testqgsgeometryutils.cpp
@@ -130,9 +138,11 @@ SET(TESTS
  testqgslayout.cpp
  testqgslayoutatlas.cpp
  testqgslayoutcontext.cpp
+ testqgslayoutexporter.cpp
  testqgslayouthtml.cpp
  testqgslayoutitem.cpp
  testqgslayoutitemgroup.cpp
+ testqgslayoutgeopdfexport.cpp
  testqgslayoutlabel.cpp
  testqgslayoutmap.cpp
  testqgslayoutmapgrid.cpp
@@ -167,6 +177,7 @@ SET(TESTS
  testqgsmeshlayerrenderer.cpp
  testqgsnetworkaccessmanager.cpp
  testqgsnetworkcontentfetcher.cpp
+ testqgsnewsfeedparser.cpp
  testqgsogcutils.cpp
  testqgsogrutils.cpp
  testqgspagesizeregistry.cpp
@@ -221,18 +232,18 @@ SET(TESTS
  testqgsofflineediting.cpp
  testqgstranslateproject.cpp
  testqobjectuniqueptr.cpp
-   )
+ testqgspostgresstringutils.cpp
+ testqgsstoredexpressionmanager.cpp
+)
 
 IF(WITH_QTWEBKIT)
-  SET(TESTS ${TESTS}
-        )
+  SET(TESTS ${TESTS})
 ENDIF(WITH_QTWEBKIT)
-
 
 IF(HAVE_OPENCL)
   SET(TESTS ${TESTS}
     testqgsopenclutils.cpp
-        )
+     )
 ENDIF(HAVE_OPENCL)
 
 

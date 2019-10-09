@@ -150,15 +150,13 @@ my $relbranch = "release-${newmajor}_${newminor}";
 my $ltrtag = $doltr ? "ltr-${newmajor}_${newminor}" : "";
 my $reltag = "final-${newmajor}_${newminor}_${newpatch}";
 
-unless( $dopoint ) {
-	unless( $skipts ) {
-		print "Pulling transifex translations...\n";
-		run( "scripts/pull_ts.sh", "pull_ts.sh failed" );
-		run( "git add i18n/*.ts", "adding translations failed" );
-		run( "git commit -n -a -m \"translation update for $release from transifex\"", "could not commit translation updates" );
-	} else {
-		print "TRANSIFEX UPDATE SKIPPED!\n";
-	}
+unless( $skipts ) {
+	print "Pulling transifex translations...\n";
+	run( "scripts/pull_ts.sh", "pull_ts.sh failed" );
+	run( "git add i18n/*.ts", "adding translations failed" );
+	run( "git commit -n -a -m \"translation update for $version from transifex\"", "could not commit translation updates" );
+} else {
+	print "TRANSIFEX UPDATE SKIPPED!\n";
 }
 
 print "Updating changelog...\n";
@@ -201,7 +199,7 @@ run( "git tag $ltrtag -m 'Long term release $release'", "ltr tag failed" ) if $d
 
 print "Producing archive...\n";
 run( "git archive --format tar --prefix=qgis-$version/ $reltag | bzip2 -c >qgis-$version.tar.bz2", "git archive failed" );
-run( "md5sum qgis-$version.tar.bz2 >qgis-$version.tar.bz2.md5", "md5sum failed" );
+run( "sha256sum qgis-$version.tar.bz2 >qgis-$version.tar.bz2.sha256", "sha256sum failed" );
 
 my @topush;
 unless( $dopoint ) {

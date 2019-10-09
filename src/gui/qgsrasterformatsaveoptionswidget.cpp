@@ -22,6 +22,7 @@
 #include "qgsproviderregistry.h"
 #include "qgsrasterdataprovider.h"
 #include "qgssettings.h"
+#include "qgsgdalutils.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -89,7 +90,7 @@ QgsRasterFormatSaveOptionsWidget::QgsRasterFormatSaveOptionsWidget( QWidget *par
         << PYRAMID_JPEG_YCBCR_COMPRESSION );
   }
 
-  connect( mProfileComboBox, static_cast<void ( QComboBox::* )( const QString & )>( &QComboBox::currentIndexChanged ),
+  connect( mProfileComboBox, &QComboBox::currentTextChanged,
            this, &QgsRasterFormatSaveOptionsWidget::updateOptions );
   connect( mOptionsTable, &QTableWidget::cellChanged, this, &QgsRasterFormatSaveOptionsWidget::optionsTableChanged );
   connect( mOptionsHelpButton, &QAbstractButton::clicked, this, &QgsRasterFormatSaveOptionsWidget::helpOptions );
@@ -255,48 +256,27 @@ void QgsRasterFormatSaveOptionsWidget::apply()
   setCreateOptions();
 }
 
-// typedefs for gdal provider function pointers
-typedef QString validateCreationOptionsFormat_t( const QStringList &createOptions, QString format );
-typedef QString helpCreationOptionsFormat_t( QString format );
-
 void QgsRasterFormatSaveOptionsWidget::helpOptions()
 {
   QString message;
 
   if ( mProvider == QLatin1String( "gdal" ) && !mFormat.isEmpty() && ! mPyramids )
   {
-    // get helpCreationOptionsFormat() function ptr for provider
-    std::unique_ptr< QLibrary > library( QgsProviderRegistry::instance()->createProviderLibrary( mProvider ) );
-    if ( library )
-    {
-      helpCreationOptionsFormat_t *helpCreationOptionsFormat =
-        ( helpCreationOptionsFormat_t * ) cast_to_fptr( library->resolve( "helpCreationOptionsFormat" ) );
-      if ( helpCreationOptionsFormat )
-      {
-        message = helpCreationOptionsFormat( mFormat );
-      }
-      else
-      {
-        message = library->fileName() + " does not have helpCreationOptionsFormat";
-      }
-    }
-    else
-      message = QStringLiteral( "cannot load provider library %1" ).arg( mProvider );
-
-
+    message = QgsGdalUtils::helpCreationOptionsFormat( mFormat );
     if ( message.isEmpty() )
       message = tr( "Cannot get create options for driver %1" ).arg( mFormat );
   }
   else if ( mProvider == QLatin1String( "gdal" ) && mPyramids )
   {
     message = tr( "For details on pyramids options please see the following pages" );
-    message += QLatin1String( "\n\nhttp://www.gdal.org/gdaladdo.html\n\nhttp://www.gdal.org/frmt_gtiff.html" );
+    message += QLatin1String( "\n\nhttps://gdal.org/programs/gdaladdo.html\n\nhttps://gdal.org/drivers/raster/gtiff.html" );
   }
   else
     message = tr( "No help available" );
 
   // show simple non-modal dialog - should we make the basic xml prettier?
   QgsDialog *dlg = new QgsDialog( this );
+  dlg->setWindowTitle( tr( "Create Options for %1" ).arg( mFormat ) );
   QTextEdit *textEdit = new QTextEdit( dlg );
   textEdit->setReadOnly( true );
   // message = tr( "Create Options:\n\n%1" ).arg( message );
@@ -362,22 +342,8 @@ QString QgsRasterFormatSaveOptionsWidget::validateOptions( bool gui, bool report
     else
     {
       // get validateCreationOptionsFormat() function ptr for provider
-      std::unique_ptr< QLibrary > library( QgsProviderRegistry::instance()->createProviderLibrary( mProvider ) );
-      if ( library )
-      {
-        validateCreationOptionsFormat_t *validateCreationOptionsFormat =
-          ( validateCreationOptionsFormat_t * ) cast_to_fptr( library->resolve( "validateCreationOptionsFormat" ) );
-        if ( validateCreationOptionsFormat )
-        {
-          message = validateCreationOptionsFormat( createOptions, mFormat );
-        }
-        else
-        {
-          message = library->fileName() + " does not have validateCreationOptionsFormat";
-        }
-      }
-      else
-        message = QStringLiteral( "cannot load provider library %1" ).arg( mProvider );
+      message = QgsGdalUtils::validateCreationOptionsFormat( createOptions, mFormat );
+
     }
   }
   else if ( ! createOptions.isEmpty() )

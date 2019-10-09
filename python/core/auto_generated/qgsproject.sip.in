@@ -13,19 +13,20 @@
 
 
 
-class QgsProject : QObject, QgsExpressionContextGenerator, QgsProjectTranslator
+class QgsProject : QObject, QgsExpressionContextGenerator, QgsExpressionContextScopeGenerator, QgsProjectTranslator
 {
 %Docstring
-Reads and writes project states.
+Encapsulates a QGIS project, including sets of map layers and their styles,
+layouts, annotations, canvases, etc.
 
-\note
+QgsProject is available both as a singleton (QgsProject.instance()) and for use as
+standalone objects. The QGIS project singleton always gives access to the canonical project reference
+open within the main QGIS application.
 
-Has two general kinds of state to make persistent.  (I.e., to read and
-write.)  First, QGIS proprietary information.  Second plug-in information.
+.. note::
 
-A singleton since there shall only be one active project at a time; and
-provides canonical location for plug-ins and main app to find/set
-properties.
+   QgsProject has two general kinds of state to make persistent. (I.e., to read and
+   write.) First, QGIS proprietary information. Second plugin information.
 %End
 
 %TypeHeaderCode
@@ -79,7 +80,7 @@ Returns ``True`` if the project has been modified since the last write()
 
     void setFileName( const QString &name );
 %Docstring
-Sets the file name associated with the project. This is the file which contains the project's XML
+Sets the file name associated with the project. This is the file or the storage URI which contains the project's XML
 representation.
 
 :param name: project file name
@@ -89,7 +90,7 @@ representation.
 
     QString fileName() const;
 %Docstring
-Returns the project's file name. This is the file which contains the project's XML
+Returns the project's file name. This is the file or the storage URI which contains the project's XML
 representation.
 
 .. seealso:: :py:func:`setFileName`
@@ -109,9 +110,7 @@ Returns QFileInfo object for the project's associated file.
 
 .. seealso:: :py:func:`fileName`
 
-.. versionadded:: 2.9
-
-.. deprecated:: Use absoluteFilePath(), baseName() or lastModifiedTime() instead
+.. deprecated:: since QGIS 3.2 use absoluteFilePath(), baseName() or lastModifiedTime() instead
 %End
 
     QgsProjectStorage *projectStorage() const;
@@ -164,9 +163,11 @@ Returns the project's native coordinate reference system.
 .. versionadded:: 3.0
 %End
 
-    void setCrs( const QgsCoordinateReferenceSystem &crs );
+    void setCrs( const QgsCoordinateReferenceSystem &crs, bool adjustEllipsoid = false );
 %Docstring
 Sets the project's native coordinate reference system.
+If ``adjustEllipsoid`` is set to ``True``, the ellpsoid of this project will be set to
+the ellipsoid imposed by the CRS.
 
 .. seealso:: :py:func:`crs`
 
@@ -233,18 +234,30 @@ Clears the project, removing all settings and resetting it back to an empty, def
 .. versionadded:: 2.4
 %End
 
-    bool read( const QString &filename );
+    enum ReadFlag
+    {
+      FlagDontResolveLayers,
+      FlagDontLoadLayouts,
+    };
+    typedef QFlags<QgsProject::ReadFlag> ReadFlags;
+
+
+    bool read( const QString &filename, QgsProject::ReadFlags flags = 0 );
 %Docstring
 Reads given project file from the given file.
 
 :param filename: name of project file to read
+:param flags: optional flags which control the read behavior of projects
 
 :return: ``True`` if project file has been read successfully
 %End
 
-    bool read();
+    bool read( QgsProject::ReadFlags flags = 0 );
 %Docstring
 Reads the project from its currently associated file (see fileName() ).
+
+The ``flags`` argument can be used to specify optional flags which control
+the read behavior of projects.
 
 :return: ``True`` if project file has been read successfully
 %End
@@ -438,9 +451,11 @@ Returns project file path if layer is embedded from other project file. Returns 
 %End
 
 
-    QgsLayerTreeGroup *createEmbeddedGroup( const QString &groupName, const QString &projectFilePath, const QStringList &invisibleLayers );
+    QgsLayerTreeGroup *createEmbeddedGroup( const QString &groupName, const QString &projectFilePath, const QStringList &invisibleLayers, QgsProject::ReadFlags flags = 0 );
 %Docstring
 Create layer group instance defined in an arbitrary project file.
+
+The optional ``flags`` argument can be used to control layer reading behavior.
 
 .. versionadded:: 2.4
 %End
@@ -538,6 +553,15 @@ Returns the project's layout manager, which manages compositions within
 the project.
 
 .. versionadded:: 3.0
+%End
+
+
+    QgsBookmarkManager *bookmarkManager();
+%Docstring
+Returns the project's bookmark manager, which manages bookmarks within
+the project.
+
+.. versionadded:: 3.10
 %End
 
     QgsLayerTree *layerTreeRoot() const;
@@ -640,6 +664,8 @@ Defines if default values should be evaluated on provider side when requested an
 
     virtual QgsExpressionContext createExpressionContext() const;
 
+    virtual QgsExpressionContextScope *createExpressionContextScope() const;
+
 
     QgsSnappingConfig snappingConfig() const;
 %Docstring
@@ -733,6 +759,21 @@ Retrieve a list of matching registered layers by layer name.
 
 .. seealso:: :py:func:`mapLayers`
 %End
+
+    QList<QgsMapLayer *> mapLayersByShortName( const QString &shortName ) const;
+%Docstring
+Retrieves a list of matching registered layers by layer ``shortName``.
+If layer's short name is empty a match with layer's name is attempted.
+
+:return: list of matching layers
+
+.. seealso:: :py:func:`mapLayer`
+
+.. seealso:: :py:func:`mapLayers`
+
+.. versionadded:: 3.10
+%End
+
 
     QMap<QString, QgsMapLayer *> mapLayers( const bool validOnly = false ) const;
 %Docstring
@@ -1033,6 +1074,92 @@ Sets the ``colors`` for the project's color scheme (see QgsProjectColorScheme).
 .. versionadded:: 3.6
 %End
 
+    void setBackgroundColor( const QColor &color );
+%Docstring
+Sets the default background ``color`` used by default map canvases.
+
+.. seealso:: :py:func:`backgroundColor`
+
+.. versionadded:: 3.10
+%End
+
+    QColor backgroundColor() const;
+%Docstring
+Returns the default background color used by default map canvases.
+
+.. seealso:: :py:func:`setBackgroundColor`
+
+.. versionadded:: 3.10
+%End
+
+    void setSelectionColor( const QColor &color );
+%Docstring
+Sets the ``color`` used to highlight selected features.
+
+.. seealso:: :py:func:`selectionColor`
+
+.. versionadded:: 3.10
+%End
+
+    QColor selectionColor() const;
+%Docstring
+Returns the color used to highlight selected features
+
+.. seealso:: :py:func:`setSelectionColor`
+
+.. versionadded:: 3.10
+%End
+
+    void setMapScales( const QVector<double> &scales );
+%Docstring
+Sets the list of custom project map ``scales``.
+
+The ``scales`` list consists of a list of scale denominator values, e.g.
+1000 for a 1:1000 scale.
+
+.. seealso:: :py:func:`mapScales`
+
+.. seealso:: :py:func:`mapScalesChanged`
+
+.. versionadded:: 3.10
+%End
+
+    QVector<double> mapScales() const;
+%Docstring
+Returns the list of custom project map scales.
+
+The scales list consists of a list of scale denominator values, e.g.
+1000 for a 1:1000 scale.
+
+.. seealso:: :py:func:`setMapScales`
+
+.. seealso:: :py:func:`mapScalesChanged`
+
+.. versionadded:: 3.10
+%End
+
+    void setUseProjectScales( bool enabled );
+%Docstring
+Sets whether project mapScales() are ``enabled``.
+
+.. seealso:: :py:func:`useProjectScales`
+
+.. seealso:: :py:func:`setMapScales`
+
+.. versionadded:: 3.10
+%End
+
+    bool useProjectScales() const;
+%Docstring
+Returns ``True`` if project mapScales() are enabled.
+
+.. seealso:: :py:func:`setUseProjectScales`
+
+.. seealso:: :py:func:`mapScales`
+
+.. versionadded:: 3.10
+%End
+
     void generateTsFile( const QString &locale );
 %Docstring
 Triggers the collection strings of .qgs to be included in ts file and calls writeTsFile()
@@ -1053,6 +1180,24 @@ Translates the project with QTranslator and qm file
 :param n: if -1 uses the appropriate form
 
 .. versionadded:: 3.4
+%End
+
+    bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
+%Docstring
+Accepts the specified style entity ``visitor``, causing it to visit all style entities associated
+with the project.
+
+Returns ``True`` if the visitor should continue visiting other objects, or ``False`` if visiting
+should be canceled.
+
+.. versionadded:: 3.10
+%End
+
+    SIP_PYOBJECT __repr__();
+%MethodCode
+    QString str = QStringLiteral( "<QgsProject: '%1'%2>" ).arg( sipCpp->fileName(),
+                  sipCpp == QgsProject::instance() ? QStringLiteral( " (singleton instance)" ) : QString() );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
   signals:
@@ -1267,6 +1412,24 @@ Emitted whenever the project's color scheme has been changed.
 .. versionadded:: 3.6
 %End
 
+    void backgroundColorChanged();
+%Docstring
+Emitted whenever the project's canvas background color has been changed.
+
+.. seealso:: :py:func:`setBackgroundColor`
+
+.. versionadded:: 3.10
+%End
+
+    void selectionColorChanged();
+%Docstring
+Emitted whenever the project's selection color has been changed.
+
+.. seealso:: :py:func:`setSelectionColor`
+
+.. versionadded:: 3.10
+%End
+
 
     void layersWillBeRemoved( const QStringList &layerIds );
 %Docstring
@@ -1395,6 +1558,17 @@ Emitted when the project dirty status changes.
 %End
 
 
+    void mapScalesChanged();
+%Docstring
+Emitted when the list of custom project map scales changes.
+
+.. seealso:: :py:func:`mapScales`
+
+.. seealso:: :py:func:`setMapScales`
+
+.. versionadded:: 3.10
+%End
+
   public slots:
 
     void setSnappingConfig( const QgsSnappingConfig &snappingConfig );
@@ -1453,6 +1627,9 @@ So there can be created a ts file with these values.
 
 };
 
+QFlags<QgsProject::ReadFlag> operator|(QgsProject::ReadFlag f1, QFlags<QgsProject::ReadFlag> f2);
+
+
 class QgsProjectDirtyBlocker
 {
 %Docstring
@@ -1495,6 +1672,9 @@ This will block dirtying the specified ``project`` for the lifetime of this obje
   private:
     QgsProjectDirtyBlocker( const QgsProjectDirtyBlocker &other );
 };
+
+
+
 
 
 /************************************************************************

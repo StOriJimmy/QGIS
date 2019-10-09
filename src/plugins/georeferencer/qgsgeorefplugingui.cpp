@@ -33,6 +33,7 @@
 #include "qgssettings.h"
 #include "qgisinterface.h"
 #include "qgsapplication.h"
+#include "qgsgui.h"
 
 #include "qgslayout.h"
 #include "qgslayoutitemlabel.h"
@@ -84,9 +85,7 @@ QgsGeorefPluginGui::QgsGeorefPluginGui( QgisInterface *qgisInterface, QWidget *p
   , mLoadInQgis( false )
 {
   setupUi( this );
-
-  QgsSettings s;
-  restoreGeometry( s.value( QStringLiteral( "/Plugin-GeoReferencer/Window/geometry" ) ).toByteArray() );
+  QgsGui::instance()->enableAutoGeometryRestore( this );
 
   QWidget *centralWidget = this->centralWidget();
   mCentralLayout = new QGridLayout( centralWidget );
@@ -116,7 +115,8 @@ QgsGeorefPluginGui::QgsGeorefPluginGui( QgisInterface *qgisInterface, QWidget *p
 
   connect( mIface, &QgisInterface::currentThemeChanged, this, &QgsGeorefPluginGui::updateIconTheme );
 
-  if ( s.value( QStringLiteral( "/Plugin-GeoReferencer/Config/ShowDocked" ) ).toBool() )
+  QgsSettings settings;
+  if ( settings.value( QStringLiteral( "/Plugin-GeoReferencer/Config/ShowDocked" ) ).toBool() )
   {
     dockThisWindow( true );
   }
@@ -145,9 +145,6 @@ void QgsGeorefPluginGui::dockThisWindow( bool dock )
 
 QgsGeorefPluginGui::~QgsGeorefPluginGui()
 {
-  QgsSettings settings;
-  settings.setValue( QStringLiteral( "Plugin-GeoReferencer/Window/geometry" ), saveGeometry() );
-
   clearGCPData();
 
   removeOldLayer();
@@ -1116,6 +1113,8 @@ void QgsGeorefPluginGui::removeOldLayer()
       ( QStringList() << mLayer->id() ) );
     mLayer = nullptr;
   }
+  mCanvas->setLayers( QList<QgsMapLayer *>() );
+  mCanvas->clearCache();
   mCanvas->refresh();
 }
 
@@ -1898,6 +1897,15 @@ QString QgsGeorefPluginGui::generateGDALwarpCommand( const QString &resampling, 
   if ( targetResX != 0.0 && targetResY != 0.0 )
   {
     gdalCommand << QStringLiteral( "-tr" ) << QString::number( targetResX, 'f' ) << QString::number( targetResY, 'f' );
+  }
+
+  if ( mProjection.authid().startsWith( QStringLiteral( "EPSG:" ), Qt::CaseInsensitive ) )
+  {
+    gdalCommand << QStringLiteral( "-t_srs %1" ).arg( mProjection.authid() );
+  }
+  else
+  {
+    gdalCommand << QStringLiteral( "-t_srs \"%1\"" ).arg( mProjection.toProj4().simplified() );
   }
 
   gdalCommand << QStringLiteral( "\"%1\"" ).arg( mTranslatedRasterFileName ) << QStringLiteral( "\"%1\"" ).arg( mModifiedRasterFileName );

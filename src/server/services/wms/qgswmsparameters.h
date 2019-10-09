@@ -177,7 +177,8 @@ namespace QgsWms
         ATLAS_PK,
         FORMAT_OPTIONS,
         SRCWIDTH,
-        SRCHEIGHT
+        SRCHEIGHT,
+        TILED
       };
       Q_ENUM( Name )
 
@@ -627,6 +628,20 @@ namespace QgsWms
        * \since QGIS 3.4
        */
       int imageQualityAsInt() const;
+
+      /**
+       * Returns TILED parameter or an empty string if not
+       * defined.
+       * \since QGIS 3.10
+       */
+      QString tiled() const;
+
+      /**
+       * Returns TILED parameter as a boolean.
+       * \throws QgsBadRequestException
+       * \since QGIS 3.10
+       */
+      bool tiledAsBool() const;
 
       /**
        * Returns infoFormat. If the INFO_FORMAT parameter is not used, then the
@@ -1287,6 +1302,12 @@ namespace QgsWms
        * \since QGIS 3.8
        */
       QString dxfCodec() const;
+
+      /**
+       * Returns the dimensions parameter.
+       * \since QGIS 3.10
+       */
+      QMap<QString, QString> dimensionValues() const;
 
     private:
       static bool isExternalLayer( const QString &name );

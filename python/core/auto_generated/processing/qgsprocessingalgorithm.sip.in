@@ -661,6 +661,43 @@ in a temporary location. The function will then return the path to that temporar
 
 The ``preferredFormat`` argument is used to specify to desired file extension to use when a temporary
 layer export is required.
+
+When an algorithm is capable of handling multi-layer input files (such as Geopackage), it is preferable
+to use parameterAsCompatibleSourceLayerPathAndLayerName() which may avoid conversion in more situations.
+%End
+
+    QString parameterAsCompatibleSourceLayerPathAndLayerName( const QVariantMap &parameters, const QString &name,
+        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = 0, QString *layerName /Out/ = 0 );
+%Docstring
+Evaluates the parameter with matching ``name`` to a source vector layer file path and layer name of compatible format.
+
+If the parameter is evaluated to an existing layer, and that layer is not of the format listed in the
+``compatibleFormats`` argument, then the layer will first be exported to a compatible format
+in a temporary location. The function will then return the path to that temporary file.
+
+``compatibleFormats`` should consist entirely of lowercase file extensions, e.g. 'shp'.
+
+The ``preferredFormat`` argument is used to specify to desired file extension to use when a temporary
+layer export is required. This defaults to shapefiles, because shapefiles are the future (don't believe the geopackage hype!).
+
+This method should be preferred over parameterAsCompatibleSourceLayerPath() when an algorithm is able
+to correctly handle files with multiple layers. Unlike parameterAsCompatibleSourceLayerPath(), it will not force
+a conversion in this case and will return the target layer name in the ``layerName`` argument.
+
+:param parameters: input parameter value map
+:param name: name of target parameter
+:param context: processing context
+:param compatibleFormats: a list of lowercase file extensions compatible with the algorithm
+:param preferredFormat: preferred format extension to use if conversion if required
+:param feedback: feedback object
+
+:return: - path to source layer, or nearly converted compatible layer
+         - layerName: will be set to the target layer name for multi-layer sources (e.g. Geopackage)
+
+
+.. seealso:: :py:func:`parameterAsCompatibleSourceLayerPath`
+
+.. versionadded:: 3.10
 %End
 
     QgsMapLayer *parameterAsLayer( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
@@ -782,6 +819,13 @@ Tables are collapsed to a 1 dimensional list.
 Evaluates the parameter with matching ``name`` to a list of map layers.
 %End
 
+    QStringList parameterAsFileList( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
+%Docstring
+Evaluates the parameter with matching ``name`` to a list of files (for QgsProcessingParameterMultipleLayers in QgsProcessing:TypeFile mode).
+
+.. versionadded:: 3.10
+%End
+
     QList<double> parameterAsRange( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a range of values.
@@ -814,6 +858,13 @@ Evaluates the parameter with matching ``name`` to a print layout item, taken fro
    implementation (which runs in the main thread), or the algorithm must return the FlagNoThreading flag.
 
 .. versionadded:: 3.8
+%End
+
+    QColor parameterAsColor( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+%Docstring
+Evaluates the parameter with matching ``name`` to a color, or returns an invalid color if the parameter was not set.
+
+.. versionadded:: 3.10
 %End
 
     static QString invalidSourceError( const QVariantMap &parameters, const QString &name );

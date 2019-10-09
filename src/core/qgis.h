@@ -44,6 +44,7 @@ int QgisEvent = QEvent::User + 1;
  */
 class CORE_EXPORT Qgis
 {
+    Q_GADGET
   public:
     // Version constants
     //
@@ -93,6 +94,20 @@ class CORE_EXPORT Qgis
       ARGB32 = 12, //!< Color, alpha, red, green, blue, 4 bytes the same as QImage::Format_ARGB32
       ARGB32_Premultiplied = 13 //!< Color, alpha, red, green, blue, 4 bytes  the same as QImage::Format_ARGB32_Premultiplied
     };
+
+    /**
+     * Authorisation to run Python Macros
+     * \since QGIS 3.10
+     */
+    enum PythonMacroMode
+    {
+      Never = 0, //!< Macros are never run
+      Ask = 1, //!< User is prompt before running
+      SessionOnly = 2, //!< Only during this session
+      Always = 3, //!< Macros are always run
+      NotForThisSession, //!< Macros will not be run for this session
+    };
+    Q_ENUM( PythonMacroMode )
 
     /**
      * Identify search radius in mm
@@ -264,6 +279,9 @@ inline QString qgsDoubleToString( double a, int precision = 17 )
  */
 inline bool qgsDoubleNear( double a, double b, double epsilon = 4 * std::numeric_limits<double>::epsilon() )
 {
+  if ( std::isnan( a ) || std::isnan( b ) )
+    return std::isnan( a ) && std::isnan( b ) ;
+
   const double diff = a - b;
   return diff > -epsilon && diff <= epsilon;
 }
@@ -276,6 +294,9 @@ inline bool qgsDoubleNear( double a, double b, double epsilon = 4 * std::numeric
  */
 inline bool qgsFloatNear( float a, float b, float epsilon = 4 * FLT_EPSILON )
 {
+  if ( std::isnan( a ) || std::isnan( b ) )
+    return std::isnan( a ) && std::isnan( b ) ;
+
   const float diff = a - b;
   return diff > -epsilon && diff <= epsilon;
 }
@@ -283,6 +304,9 @@ inline bool qgsFloatNear( float a, float b, float epsilon = 4 * FLT_EPSILON )
 //! Compare two doubles using specified number of significant digits
 inline bool qgsDoubleNearSig( double a, double b, int significantDigits = 10 )
 {
+  if ( std::isnan( a ) || std::isnan( b ) )
+    return std::isnan( a ) && std::isnan( b ) ;
+
   // The most simple would be to print numbers as %.xe and compare as strings
   // but that is probably too costly
   // Then the fastest would be to set some bits directly, but little/big endian
@@ -428,7 +452,7 @@ template<class T> QString qgsEnumValueToKey( const T &value ) SIP_SKIP
 {
   QMetaEnum metaEnum = QMetaEnum::fromType<T>();
   Q_ASSERT( metaEnum.isValid() );
-  return QString::fromUtf8( metaEnum.valueToKey( value ) );
+  return QString::fromUtf8( metaEnum.valueToKey( static_cast<int>( value ) ) );
 }
 
 /**
@@ -494,7 +518,8 @@ CORE_EXPORT qlonglong qgsPermissiveToLongLong( QString string, bool &ok );
 CORE_EXPORT bool qgsVariantLessThan( const QVariant &lhs, const QVariant &rhs );
 
 /**
- * Compares two QVariant values and returns whether they are equal, NULL values are treated as equal.
+ * Compares two QVariant values and returns whether they are equal, two NULL values are
+ * always treated as equal and 0 is not treated as equal with NULL
  *
  * \param lhs first value
  * \param rhs second value

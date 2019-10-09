@@ -20,8 +20,6 @@
 #include "qgis_gui.h"
 #include "qgscoordinatereferencesystem.h"
 
-
-class QgsVertexMarker;
 class QResizeEvent;
 
 /**
@@ -230,6 +228,8 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
 
     QString selectedProj4String();
 
+    QString selectedWktString();
+
     //! Gets the current QGIS projection identfier
     long selectedCrsId();
 
@@ -287,16 +287,9 @@ class GUI_EXPORT QgsProjectionSelectionTreeWidget : public QWidget, private Ui::
     //! Hide deprecated CRSes
     void hideDeprecated( QTreeWidgetItem *item );
 
-    QgsRubberBand *mPreviewBand;
-    QgsRubberBand *mPreviewBand2;
-    QgsVertexMarker *mVertexMarker;
-
     bool mShowMap = true;
 
-    QList<QgsMapLayer *> mLayers;
-
-    QgsRectangle mPreviewRect;
-
+    bool mInitialized = false;
 
   private slots:
     //! Gets list of authorities

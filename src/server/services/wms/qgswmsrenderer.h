@@ -128,6 +128,11 @@ namespace QgsWms
        */
       QByteArray getFeatureInfo( const QString &version = "1.3.0" );
 
+      /**
+       * Configures \a layers for rendering optionally considering the map \a settings
+       */
+      void configureLayers( QList<QgsMapLayer *> &layers, QgsMapSettings *settings = nullptr );
+
     private:
       QgsLegendSettings legendSettings() const;
 
@@ -146,8 +151,10 @@ namespace QgsWms
       // Set layer opacity
       void setLayerOpacity( QgsMapLayer *layer, int opacity ) const;
 
-      // Set layer filter
+      // Set layer filter and dimension
       void setLayerFilter( QgsMapLayer *layer, const QList<QgsWmsParametersFilter> &filters );
+
+      QStringList dimensionFilter( QgsVectorLayer *layer ) const;
 
       // Set layer python filter
       void setLayerAccessControlFilter( QgsMapLayer *layer ) const;
@@ -240,7 +247,7 @@ namespace QgsWms
       QByteArray convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc ) const;
 
       QDomElement createFeatureGML(
-        QgsFeature *feat,
+        const QgsFeature *feat,
         QgsVectorLayer *layer,
         QDomDocument &doc,
         QgsCoordinateReferenceSystem &crs,
@@ -267,8 +274,6 @@ namespace QgsWms
       void removeTemporaryLayers();
 
       void handlePrintErrors( const QgsLayout *layout ) const;
-
-      void configureLayers( QList<QgsMapLayer *> &layers, QgsMapSettings *settings = nullptr );
 
       void setLayerStyle( QgsMapLayer *layer, const QString &style ) const;
 
